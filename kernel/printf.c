@@ -82,7 +82,7 @@ printint(i8 ns, struct var_para* vp)
 }
 
 void
-printf(const char* fmt, ...)
+print(const char* fmt, ...)
 {
   struct var_para vp;
   parse_para(vp);

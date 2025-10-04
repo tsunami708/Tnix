@@ -11,7 +11,7 @@ CFLAGS = -Wall -Werror -Wno-unknown-attributes -O0 -fno-omit-frame-pointer -ggdb
 CFLAGS += -MD
 CFLAGS += -mcmodel=medany
 CFLAGS += -ffreestanding
-CFLAGS += -fno-common -nostdlib
+CFLAGS += -fno-common -nostdlib 
 CFLAGS += -fno-builtin-strncpy -fno-builtin-strncmp -fno-builtin-strlen -fno-builtin-memset
 CFLAGS += -fno-builtin-memmove -fno-builtin-memcmp -fno-builtin-log -fno-builtin-bzero
 CFLAGS += -fno-builtin-strchr -fno-builtin-exit -fno-builtin-malloc -fno-builtin-putc
@@ -45,10 +45,8 @@ OBJS = \
   $K/boot/entry.o \
 	$K/boot/start.o \
 	$K/boot/main.o \
-	$K/mem/meminit.o \
-	$K/list.o \
+	$K/mem/alloc.o \
 	$K/spinlock.o \
-	$K/string.o \
 	$K/printf.o \
 	$K/task/cpu.o \
 

@@ -7,7 +7,6 @@
 kernel/kernel
 fs.img
 
-alloc.*
-meminit.*
+
 list.*
 string.*
