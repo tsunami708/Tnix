@@ -1,0 +1,13 @@
+.cache
+.vscode
+*.d
+*.o
+*.asm
+*.sym
+kernel/kernel
+fs.img
+
+alloc.*
+meminit.*
+list.*
+string.*

@@ -1,0 +1,47 @@
+OUTPUT_ARCH( "riscv" )
+ENTRY( entry )
+
+PHDRS
+{
+  text PT_LOAD FLAGS(5);    /* R + X = 4 + 1 = 5 */
+  rodata PT_LOAD FLAGS(4);  /* R = 4 */
+  data PT_LOAD FLAGS(6);    /* R + W = 4 + 2 = 6 */
+}
+
+SECTIONS
+{
+  /*
+   * ensure that entry.S / entry is at 0x80000000,
+   * where qemu's -kernel jumps.
+  */
+  . = 0x80000000;
+
+  .text : {
+    kernel/boot/entry.o(entry)
+    *(.text .text.*)
+    PROVIDE(etext = .);
+  } :text
+
+  .rodata : {
+    . = ALIGN(16);
+    *(.srodata .srodata.*) 
+    . = ALIGN(16);
+    *(.rodata .rodata.*)
+  } :rodata
+
+  .data : {
+    . = ALIGN(16);
+    *(.sdata .sdata.*) 
+    . = ALIGN(16);
+    *(.data .data.*)
+  } :data
+
+  .bss : {
+    . = ALIGN(16);
+    *(.sbss .sbss.*)
+    . = ALIGN(16);
+    *(.bss .bss.*)
+  } :data
+
+  PROVIDE(end = .);
+}
