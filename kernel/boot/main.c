@@ -10,8 +10,8 @@ void
 main()
 {
   if (cpuid() == 0) {
-    init_mem(); // 物理地址初始化
-    // init_page(); // 内核页表初始化
+    init_mem();  // 物理地址初始化
+    init_page(); // 内核页表初始化
     __sync_synchronize();
     cpu_ok = true;
   } else {
@@ -21,7 +21,7 @@ main()
   }
   while (1) {
     struct page* p = kalloc();
-    print("cpu%d get page %x\n", cpuid(), pa(p));
+    print("cpu%d get page %x\n", cpuid(), pha(p));
     kfree(p);
   }
 }

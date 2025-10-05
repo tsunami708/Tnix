@@ -8,5 +8,3 @@ kernel/kernel
 fs.img
 
 
-string.*
-vm.c

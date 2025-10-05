@@ -15,4 +15,4 @@ struct page* kalloc();
 // 释放1页
 void kfree(struct page* p);
 
-#define pa(page) (page->paddr)
+#define pha(page) (page->paddr)

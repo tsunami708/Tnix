@@ -23,10 +23,12 @@ SECTIONS
   } :text
 
   .rodata : {
-    . = ALIGN(16);
+    . = ALIGN(4096);
+    PROVIDE(brodata = .);
     *(.srodata .srodata.*) 
     . = ALIGN(16);
     *(.rodata .rodata.*)
+    PROVIDE(erodata = .);
   } :rodata
 
   .data : {

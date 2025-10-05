@@ -2,7 +2,7 @@
 #include "config.h"
 #include "printf.h"
 #include "spinlock.h"
-
+#include "string.h"
 #define page_num(addr) (addr - PHY_MEMORY) / PGSIZE
 extern char        end[]; // kernel.ld提供的内核静态数据区结束地址
 static struct page phy_mem[PHY_SIZE / PGSIZE];
@@ -37,6 +37,7 @@ kalloc()
   p->inuse = true;
   remove_from_list(pages_head.next);
   release_spin(&mem_spin);
+  memset((void*)p->paddr, 0, PGSIZE);
   return p;
 }
 

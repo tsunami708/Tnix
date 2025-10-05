@@ -46,10 +46,12 @@ OBJS = \
 	$K/boot/start.o \
 	$K/boot/main.o \
 	$K/mem/alloc.o \
+	$K/mem/vm.o \
+	$K/task/cpu.o \
 	$K/spinlock.o \
 	$K/printf.o \
-	$K/task/cpu.o \
 	$K/list.o \
+	$K/string.o \
 
 $K/kernel: $(OBJS) $K/kernel.ld
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS) 
