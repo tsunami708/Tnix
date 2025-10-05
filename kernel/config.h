@@ -1,10 +1,32 @@
 #pragma once
 // 页帧大小
-#define PGSIZE 4096
+#define PGSIZE 4096UL
+
+// 最大虚拟地址
+/*
+Sv39的合法地址空间为0~0x3FFFFFFFFF 和 0xFFFFFFC000000000~0xFFFFFFFFFFFFFFFF
+各256GB,为了简单,只使用低地址空间,也已足够
+*/
+#define MAXVA 0x3FFFFFFFFFUL
 
 // 硬件属性
-#define NCPU       4
+#define NCPU 4
+
 #define PHY_MEMORY 0x80000000UL
-#define PHY_SIZE   0x1FA000000UL // 8GB
-#define PHY_TOP    PHY_MEMORY + PHY_SIZE
-#define NPAGE      PHY_SIZE / PGSIZE
+// #define PHY_SIZE   0x1FA000000UL // 8GB
+#define PHY_SIZE  0x8000000UL // 8GB
+#define PHY_TOP   PHY_MEMORY + PHY_SIZE
+#define NPAGE     PHY_SIZE / PGSIZE
+#define KENELBASE PHY_MEMORY
+
+#define CLINT      0x2000000UL
+#define CLINT_SIZE 0x10000UL
+
+#define PLIC      0xC000000UL
+#define PLIC_SIZE 0x600000UL
+
+#define UART0      0x10000000UL
+#define UART0_SIZE PGSIZE
+
+#define VIRIO      0x10001000UL
+#define VIRIO_SIZE PGSIZE

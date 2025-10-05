@@ -49,6 +49,7 @@ OBJS = \
 	$K/spinlock.o \
 	$K/printf.o \
 	$K/task/cpu.o \
+	$K/list.o \
 
 $K/kernel: $(OBJS) $K/kernel.ld
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS) 
@@ -67,7 +68,7 @@ clean:
 	-name "*.log" -o -name "*.ind" -o -name "*.ilg" -o \
 	-name "*.o" -o -name "*.d" -o -name "*.asm" -o -name "*.sym" \
 	\) -exec rm -f {} +
-	rm -f $K/kernel *.dts *.dtb
+	rm -f $K/kernel *.dtb
 
 
 qemu: $K/kernel 

@@ -99,6 +99,23 @@ r_time()
   return x;
 }
 
+// PTE Sv39 --- 9-9-9-12
+// 63-----37 | 36---28 | 27---19 | 18---10 | 9---8  | 7---0
+//  reserved |  PPN[2] |  PPN[1] | PPN[0]  | RSW(OS)| attribute
+
+// SATP
+// 63---60 | 59---44 | 43---0
+// MODE   |  ASID   | PPN
+// MODE=8表示Sv39,ASID暂不使用,PPN为(根页表物理地址>>12)
+#define PTE_V     (1 << 0)
+#define PTE_R     (1 << 1)
+#define PTE_W     (1 << 2)
+#define PTE_X     (1 << 3)
+#define PTE_U     (1 << 4)
+#define PTE_G     (1 << 5)
+#define PTE_A     (1 << 6)
+#define PTE_D     (1 << 7)
+#define SATP_MODE 0b1000UL << 60
 static inline u64
 r_satp()
 {

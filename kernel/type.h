@@ -13,3 +13,9 @@
 #define u16 unsigned short
 #define u32 unsigned int
 #define u64 unsigned long long
+
+#define align_down(x, align) ((x) & ~((align) - 1))
+#define align_up(x, align)   (((x) + (align) - 1) & ~((align) - 1))
+
+#define pte_t       u64
+#define pagetable_t pte_t* // 指示根页表
