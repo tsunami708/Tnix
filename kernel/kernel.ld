@@ -32,7 +32,7 @@ SECTIONS
   } :rodata
 
   .data : {
-    . = ALIGN(16);
+    . = ALIGN(4096);
     *(.sdata .sdata.*) 
     . = ALIGN(16);
     *(.data .data.*)

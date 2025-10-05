@@ -5,4 +5,5 @@
 #define M_PAGE 1 // 2MB
 #define G_PAGE 2 // 1GB
 
-void vmmap(u64 va, u64 pa, u64 size, u16 attr, i8 granularity);
+void vmmap(pagetable_t ptb, u64 va, u64 pa, u64 size, u16 attr,
+           i8 granularity);

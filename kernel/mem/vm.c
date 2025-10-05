@@ -27,7 +27,7 @@ extern char end[];
   granularity页粒度
 */
 void
-vmmap(u64 va, u64 pa, u64 size, u16 attr, i8 granularity)
+vmmap(pagetable_t ptb, u64 va, u64 pa, u64 size, u16 attr, i8 granularity)
 {
   if (va % PGSIZE || pa % PGSIZE)
     panic("vmmap not aligned");
@@ -50,7 +50,7 @@ vmmap(u64 va, u64 pa, u64 size, u16 attr, i8 granularity)
 
   u64 bound = align_up(va + size, delta);
   for (; va < bound; va += delta, pa += delta) {
-    pte_t *cur = (pte_t*)kernel_pgt, *pte;
+    pte_t *cur = (pte_t*)ptb, *pte;
 
     // 遍历页表级别：L2 -> L1 -> L0
     for (i8 level = 2; level >= 0; --level) {
@@ -76,13 +76,14 @@ init_page()
 {
   if (cpuid() == 0) {
     kernel_pgt = (pagetable_t)pha(kalloc());
-    vmmap(CLINT, CLINT, CLINT_SIZE, PTE_R | PTE_W, S_PAGE);
-    vmmap(PLIC, PLIC, PLIC_SIZE, PTE_R | PTE_W, S_PAGE);
-    vmmap(UART0, UART0, UART0_SIZE, PTE_R | PTE_W, S_PAGE);
-    vmmap(VIRIO, VIRIO, VIRIO_SIZE, PTE_R | PTE_W, S_PAGE);
-    vmmap(KERNELBASE, KERNELBASE, KCODE_SIZE, PTE_R | PTE_X, S_PAGE);
-    vmmap(KRODATA, KRODATA, KRODATA_SIZE, PTE_R, S_PAGE);
-    vmmap(KDATA, KDATA, KDATA_SIZE, PTE_R | PTE_W, S_PAGE);
+    vmmap(kernel_pgt, CLINT, CLINT, CLINT_SIZE, PTE_R | PTE_W, S_PAGE);
+    vmmap(kernel_pgt, PLIC, PLIC, PLIC_SIZE, PTE_R | PTE_W, S_PAGE);
+    vmmap(kernel_pgt, UART0, UART0, UART0_SIZE, PTE_R | PTE_W, S_PAGE);
+    vmmap(kernel_pgt, VIRIO, VIRIO, VIRIO_SIZE, PTE_R | PTE_W, S_PAGE);
+    vmmap(kernel_pgt, KERNELBASE, KERNELBASE, KCODE_SIZE, PTE_R | PTE_X,
+          S_PAGE);
+    vmmap(kernel_pgt, KRODATA, KRODATA, KRODATA_SIZE, PTE_R, S_PAGE);
+    vmmap(kernel_pgt, KDATA, KDATA, KDATA_SIZE, PTE_R | PTE_W, S_PAGE);
   }
   __sync_synchronize();
   asm volatile("sfence.vma zero, zero");

@@ -13,7 +13,7 @@ main()
     init_mem();  // 物理地址初始化
     init_page(); // 内核页表初始化
     __sync_synchronize();
-    cpu_ok = true;
+
   } else {
     while (!cpu_ok)
       ;
