@@ -151,6 +151,12 @@ w_stimecmp(u64 x)
   asm volatile("csrw 0x14d, %0" : : "r"(x));
 }
 
+static inline void
+w_stvec(u64 x)
+{
+  asm volatile("csrw stvec, %0" : : "r"(x));
+}
+
 // 通用寄存器读写
 
 static inline u64

@@ -17,5 +17,7 @@
 #define align_down(x, align) ((x) & ~((align) - 1))
 #define align_up(x, align)   (((x) + (align) - 1) & ~((align) - 1))
 
+#define min(a, b) (a < b ? a : b)
+
 #define pte_t       u64
 #define pagetable_t pte_t* // 指示根页表

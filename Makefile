@@ -52,6 +52,8 @@ OBJS = \
 	$K/printf.o \
 	$K/list.o \
 	$K/string.o \
+	$K/trap.o \
+	$K/pt_reg.o \
 
 $K/kernel: $(OBJS) $K/kernel.ld
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS) 
@@ -76,9 +78,9 @@ clean:
 qemu: $K/kernel 
 	$(QEMU) -machine virt $(QEMUOPTS)
 
-qemu-gdb: $K/kernel
+gdb: $K/kernel
 	$(QEMU) -machine virt $(QEMUOPTS) -S -s
 
-dump-dts: $K/kernel
+dts: $K/kernel
 	$(QEMU) -machine virt,dumpdtb=device.dtb $(QEMUOPTS)
 	dtc -I dtb -O dts -o device.dts device.dtb
