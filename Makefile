@@ -34,7 +34,7 @@ LDFLAGS = -z max-page-size=4096
 ifndef CPUS
 CPUS := 4
 endif
-QEMUOPTS = -bios none -kernel $K/kernel -m 8096M -smp $(CPUS) -nographic
+QEMUOPTS = -bios none -kernel $K/kernel -m 8096M -smp $(CPUS) -nographic 
 # QEMUOPTS += -global virtio-mmio.force-legacy=false
 # QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
 # QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0

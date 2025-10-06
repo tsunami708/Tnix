@@ -1,6 +1,8 @@
 #pragma once
 // 页帧大小
-#define PGSIZE 4096UL
+#define PGSIZE  4096UL
+#define MPGSIZE (PGSIZE << 9)  // 2MB
+#define GPGSIZE (PGSIZE << 18) // 1GB
 
 // 最大虚拟地址
 /*
@@ -10,7 +12,7 @@ Sv39的合法地址空间为0~0x3FFFFFFFFF 和 0xFFFFFFC000000000~0xFFFFFFFFFFFF
 #define MAXVA 0x3FFFFFFFFFUL
 
 // 硬件属性
-#define NCPU 4
+#define NCPU 8
 
 #define PHY_MEMORY 0x80000000UL
 #define PHY_SIZE   0x1FA000000UL // 8GB

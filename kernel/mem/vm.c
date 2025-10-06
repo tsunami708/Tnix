@@ -39,10 +39,10 @@ vmmap(pagetable_t ptb, u64 va, u64 pa, u64 size, u16 attr, i8 granularity)
     delta = PGSIZE;
     break;
   case M_PAGE:
-    delta = PGSIZE << 10;
+    delta = MPGSIZE;
     break; // 2MB
   case G_PAGE:
-    delta = PGSIZE << 18;
+    delta = GPGSIZE;
     break; // 1GB
   default:
     panic("vmmap unknown granularity");
@@ -84,6 +84,17 @@ init_page()
           S_PAGE);
     vmmap(kernel_pgt, KRODATA, KRODATA, KRODATA_SIZE, PTE_R, S_PAGE);
     vmmap(kernel_pgt, KDATA, KDATA, KDATA_SIZE, PTE_R | PTE_W, S_PAGE);
+
+    u64 va    = align_up(KDATA + KDATA_SIZE, PGSIZE);
+    u64 bound = MAXVA > PHY_TOP ? PHY_TOP : MAXVA;
+    for (; va % MPGSIZE && va < bound; va += PGSIZE)
+      vmmap(kernel_pgt, va, va, PGSIZE, PTE_R | PTE_W, S_PAGE);
+    for (; va % GPGSIZE && va < bound; va += MPGSIZE)
+      vmmap(kernel_pgt, va, va, MPGSIZE, PTE_R | PTE_W, M_PAGE);
+    for (; va + GPGSIZE < bound; va += GPGSIZE)
+      vmmap(kernel_pgt, va, va, GPGSIZE, PTE_R | PTE_W, G_PAGE);
+    for (; va < bound; va += PGSIZE)
+      vmmap(kernel_pgt, va, va, PGSIZE, PTE_R | PTE_W, S_PAGE);
   }
   __sync_synchronize();
   asm volatile("sfence.vma zero, zero");
