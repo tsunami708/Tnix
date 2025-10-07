@@ -145,6 +145,20 @@ w_sie(u64 x)
   asm volatile("csrw sie, %0" : : "r"(x));
 }
 
+static inline u64
+r_sstatus()
+{
+  u64 x;
+  asm volatile("csrr %0, sstatus" : "=r"(x));
+  return x;
+}
+
+static inline void
+w_sstatus(u64 x)
+{
+  asm volatile("csrw sstatus, %0" : : "r"(x));
+}
+
 static inline void
 w_stimecmp(u64 x)
 {

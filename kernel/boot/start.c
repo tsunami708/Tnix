@@ -12,7 +12,7 @@ init_timer()
 {
   w_menvcfg(r_menvcfg() | (1L << 63)); // 为 S 模式启用 stimecmp
   w_mcounteren(r_mcounteren() | 2);    // 使能S\U模式下的 time 系统寄存器
-  w_stimecmp(r_time() + 1000000);
+  w_stimecmp(r_time() + TIME_CYCLE);
 }
 
 void
@@ -36,7 +36,8 @@ start()
   w_mideleg(0xFFFF);            // 将中断委托给S模式
   w_pmpaddr0(0x3FFFFFFFFFFFFF); // 授权S模式物理地址访问空间
   w_pmpcfg0(0xF);               // 授权S模式物理地址访问权限
-  w_sie(r_sie() | SIE_SEIE | SIE_STIE | SIE_SSIE);
+  // w_sie(r_sie() | SIE_SEIE | SIE_STIE | SIE_SSIE);
+  w_sie(r_sie() | SIE_STIE);
   w_tp(r_mhartid());
   init_timer();
   asm volatile("mret");

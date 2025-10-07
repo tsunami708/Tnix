@@ -23,6 +23,7 @@ RISC-V trap软件处理流程:
 #include "type.h"
 #include "riscv.h"
 #include "printf.h"
+#include "config.h"
 
 struct pt_regs {
   u64 ra, sp, gp, tp;
@@ -44,7 +45,8 @@ init_trap()
 static int
 unknow_trap(struct pt_regs* pt)
 {
-  panic("%s", __func__);
+  panic("%s %s %u", __func__, pt->scause & (1UL << 63) ? "int" : "ex",
+        pt->scause);
   return 0;
 }
 
@@ -102,7 +104,8 @@ asy_ipi(struct pt_regs* pt)
 static int
 asy_timer(struct pt_regs* pt)
 {
-  unknow_trap(pt);
+  print("%s\n", __func__);
+  w_stimecmp(r_time() + TIME_CYCLE);
   return 0;
 }
 static int

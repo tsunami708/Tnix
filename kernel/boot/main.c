@@ -24,6 +24,8 @@ main()
     init_trap();
     __sync_synchronize();
   }
+  w_sstatus(r_sstatus() | 0b10UL);
+
   asm volatile("ecall");
 
   struct page* p = kalloc();
