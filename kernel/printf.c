@@ -99,6 +99,7 @@ print(const char* fmt, ...)
           printuint(10, &vp);
           break;
         case 'x':
+          printstr("0x");
           printuint(16, &vp);
           break;
         case 's':
@@ -143,6 +144,7 @@ panic(const char* fmt, ...)
           printuint(10, &vp);
           break;
         case 'x':
+          printstr("0x");
           printuint(16, &vp);
           break;
         case 's':

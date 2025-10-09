@@ -1,23 +1,29 @@
 #include "config.h"
 #include "type.h"
 #include "riscv.h"
+#include "cpu.h"
 
 extern void main();
 
 __attribute__((aligned(16))) char cpu_stack[PGSIZE * NCPU];
 
+struct cpu cpus[NCPU];
 
 static void
 init_timer()
 {
-  w_menvcfg(r_menvcfg() | (1L << 63)); // 为 S 模式启用 stimecmp
-  w_mcounteren(r_mcounteren() | 2);    // 使能S\U模式下的 time 系统寄存器
+  w_menvcfg(r_menvcfg() | (1UL << 63)); // 为 S 模式启用 stimecmp
+  w_mcounteren(r_mcounteren() | 2);     // 使能S\U模式下的 time 系统寄存器
   w_stimecmp(r_time() + TIME_CYCLE);
 }
 
 void
 start()
 {
+  u64 cpuid      = r_mstatus();
+  cpus[cpuid].id = cpuid;
+  w_tp((u64)(cpus + cpuid));
+
   // mstatus的bit11-bit12标识trap到M模式时之前的模式
   // 在启动阶段通过伪造一个trap方便后续以S模式进入到初始化函数
   u64 mstatus = r_mstatus();
@@ -38,7 +44,6 @@ start()
   w_pmpcfg0(0xF);               // 授权S模式物理地址访问权限
   // w_sie(r_sie() | SIE_SEIE | SIE_STIE | SIE_SSIE);
   w_sie(r_sie() | SIE_STIE);
-  w_tp(r_mhartid());
   init_timer();
   asm volatile("mret");
 

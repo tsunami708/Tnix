@@ -11,6 +11,7 @@ holding_spin(struct spinlock* lock)
 void
 acquire_spin(struct spinlock* lock)
 {
+  cli(); // 防止因中断导致锁重入
   if (holding_spin(lock))
     panic("cpu%d repeat acquire %s", cpuid(), lock->lname);
 
@@ -28,4 +29,5 @@ release_spin(struct spinlock* lock)
   lock->cpu = NULL;
   __sync_synchronize();
   __sync_lock_release(&lock->locked);
+  sti();
 }

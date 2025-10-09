@@ -25,6 +25,7 @@ RISC-V trap软件处理流程:
 #include "printf.h"
 #include "config.h"
 
+// 不要改变struct pt_regs的字段顺序
 struct pt_regs {
   u64 ra, sp, gp, tp;
   u64 sepc, sstatus, stval, scause;
@@ -45,8 +46,7 @@ init_trap()
 static int
 unknow_trap(struct pt_regs* pt)
 {
-  panic("%s %s %u", __func__, pt->scause & (1UL << 63) ? "int" : "ex",
-        pt->scause);
+  panic("%s %s %u", __func__, pt->scause & (1UL << 63) ? "int" : "ex", pt->scause);
   return 0;
 }
 
@@ -74,12 +74,9 @@ static trap_fn interrupt_funs[] = {
   unknow_trap, unknow_trap, unknow_trap, asy_extern,  unknow_trap,
 };
 static trap_fn exception_funs[] = {
-  syn_text_misaligned,  syn_text_fault,      syn_text_illegal,
-  syn_breakpoint,       unknow_trap,         syn_load_fault,
-  syn_store_misaligned, syn_store_fault,     syn_syscall,
-  syn_syscall,          unknow_trap,         unknow_trap,
-  syn_text_page_fault,  syn_load_page_fault, unknow_trap,
-  syn_store_page_fault, unknow_trap,
+  syn_text_misaligned,  syn_text_fault,      syn_text_illegal, syn_breakpoint,       unknow_trap, syn_load_fault,
+  syn_store_misaligned, syn_store_fault,     syn_syscall,      syn_syscall,          unknow_trap, unknow_trap,
+  syn_text_page_fault,  syn_load_page_fault, unknow_trap,      syn_store_page_fault, unknow_trap,
 };
 
 int

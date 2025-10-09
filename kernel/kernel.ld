@@ -18,8 +18,24 @@ SECTIONS
 
   .text : {
     kernel/boot/entry.o(entry)
-    *(.text .text.*)
+    *(.text)
     PROVIDE(etext = .);
+    . = ALIGN(4096);
+    PROVIDE(trampoline = .);
+    trampoline_start = .;
+    *(.text.trampoline.utrap_entry)
+    *(.text.trampoline)
+    ASSERT(. - trampoline_start <= 4096, "Error: trampoline exceeds 4KB");
+  } :text
+
+    /* 仅包含 systemd_main 的代码 */
+  .init : {
+    . = ALIGN(4096);
+    init_start = .;
+    PROVIDE(init = .);
+    *(.init.text)         
+    PROVIDE(einit = .);
+    ASSERT(. - init_start <= 4096, "Error: init exceeds 4KB");
   } :text
 
   .rodata : {

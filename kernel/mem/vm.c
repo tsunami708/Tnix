@@ -11,10 +11,16 @@ pagetable_t kernel_pgt; // 内核根页表
 
 
 extern char etext[];
+extern char trampoline[];
+extern char init[];
+extern char einit[];
 extern char brodata[];
 extern char erodata[];
 extern char end[];
-#define KCODE_SIZE   (align_up((u64)etext, PGSIZE) - KERNELBASE)
+#define KCODE_SIZE   (align_up((u64)etext, PGSIZE) - KBASE)
+#define TRAMPOLINE   ((u64)trampoline)
+#define UINIT        ((u64)(init))
+#define UINIT_SIZE   (align_up((u64)(einit), PGSIZE) - UINIT)
 #define KRODATA      ((u64)brodata)
 #define KRODATA_SIZE (align_up((u64)erodata, PGSIZE) - KRODATA)
 #define KDATA        (KRODATA + KRODATA_SIZE)
@@ -80,8 +86,9 @@ init_page()
     vmmap(kernel_pgt, PLIC, PLIC, PLIC_SIZE, PTE_R | PTE_W, S_PAGE);
     vmmap(kernel_pgt, UART0, UART0, UART0_SIZE, PTE_R | PTE_W, S_PAGE);
     vmmap(kernel_pgt, VIRIO, VIRIO, VIRIO_SIZE, PTE_R | PTE_W, S_PAGE);
-    vmmap(kernel_pgt, KERNELBASE, KERNELBASE, KCODE_SIZE, PTE_R | PTE_X,
-          S_PAGE);
+    vmmap(kernel_pgt, KBASE, KBASE, KCODE_SIZE, PTE_R | PTE_X, S_PAGE);
+    vmmap(kernel_pgt, TRAMPOLINE, TRAMPOLINE, PGSIZE, PTE_R | PTE_X, S_PAGE);
+    vmmap(kernel_pgt, UINIT, UINIT, UINIT_SIZE, PTE_R | PTE_X | PTE_U, S_PAGE);
     vmmap(kernel_pgt, KRODATA, KRODATA, KRODATA_SIZE, PTE_R, S_PAGE);
     vmmap(kernel_pgt, KDATA, KDATA, KDATA_SIZE, PTE_R | PTE_W, S_PAGE);
 

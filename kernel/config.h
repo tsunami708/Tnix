@@ -1,5 +1,7 @@
 #pragma once
-// 页帧大小
+#define NPROC 32
+
+// 页大小
 #define PGSIZE  4096UL
 #define MPGSIZE (PGSIZE << 9)  // 2MB
 #define GPGSIZE (PGSIZE << 18) // 1GB
@@ -19,7 +21,7 @@ Sv39的合法地址空间为0~0x3FFFFFFFFF 和 0xFFFFFFC000000000~0xFFFFFFFFFFFF
 #define PHY_SIZE   0x1FA000000UL // 8GB
 #define PHY_TOP    PHY_MEMORY + PHY_SIZE
 #define NPAGE      PHY_SIZE / PGSIZE
-#define KERNELBASE PHY_MEMORY
+#define KBASE      PHY_MEMORY
 
 #define CLINT      0x2000000UL
 #define CLINT_SIZE 0x10000UL

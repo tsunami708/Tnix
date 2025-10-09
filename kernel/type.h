@@ -2,7 +2,7 @@
 #define bool  int
 #define true  1
 #define false 0
-#define NULL  0
+#define NULL  (void*)0
 
 #define i8  signed char
 #define i16 short

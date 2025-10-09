@@ -130,8 +130,13 @@
 
 /*stvec的值,直接跳转模式trap_entry地址必须4字节对齐*/
 .global ktrap_entry
+.global trampoline
+.global utrap_entry
+.global utrap_return
+.extern kernel_pgt
 .extern do_trap
 
+.section .text
 .align 2
 ktrap_entry:
   load_pt_reg
@@ -142,3 +147,34 @@ ktrap_entry:
   call do_trap
   store_pt_reg
   sret
+
+
+.section .text.trampoline.utrap_entry
+#define TASK_KSTACK     8
+#define TASK_UPAGETABLE 16
+utrap_entry:
+  csrw sscratch, sp #保存用户态栈指针
+  ld sp, TASK_KSTACK(tp) #获取内核栈地址
+  load_pt_reg
+  csrw sscratch, a0
+  sd a0, PT_SP(sp)
+
+  sfence.vma zero, zero
+  la t0, kernel_pgt
+  csrw satp, t0
+  sfence.vma zero, zero
+
+  mv a0, sp
+  csrr a1, scause
+  call do_trap
+
+  sfence.vma zero, zero
+  ld t0, TASK_UPAGETABLE(tp) #切换回用户task页表
+  csrw satp, t0
+  sfence.vma zero, zero
+
+  store_pt_reg
+  csrr sp, sscratch
+  sret
+
+

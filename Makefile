@@ -21,7 +21,7 @@ CFLAGS += -fno-builtin-printf -fno-builtin-fprintf -fno-builtin-vprintf
 CFLAGS += -Ikernel -Ikernel/boot -Ikernel/task -Ikernel/mem -Ikernel/dev
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]no-pie'),)
-CFLAGS += -fno-pie -no-pie
+CFLAGS += -fno-pie -no-pie 
 endif
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]nopie'),)
 CFLAGS += -fno-pie -nopie
@@ -47,7 +47,9 @@ OBJS = \
 	$K/boot/main.o \
 	$K/mem/alloc.o \
 	$K/mem/vm.o \
-	$K/task/cpu.o \
+	$K/task/sche.o \
+	$K/task/switch.o \
+	$K/task/systemd.o \
 	$K/spinlock.o \
 	$K/printf.o \
 	$K/list.o \

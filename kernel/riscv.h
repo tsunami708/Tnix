@@ -129,9 +129,9 @@ w_satp(u64 x)
   asm volatile("csrw satp, %0" ::"r"(x));
 }
 
-#define SIE_SSIE (1L << 1) // 核间中断
-#define SIE_SEIE (1L << 9) // 外设中断
-#define SIE_STIE (1L << 5) // 时钟中断
+#define SIE_SSIE (1UL << 1) // 核间中断
+#define SIE_SEIE (1UL << 9) // 外设中断
+#define SIE_STIE (1UL << 5) // 时钟中断
 static inline u64
 r_sie()
 {
@@ -145,6 +145,7 @@ w_sie(u64 x)
   asm volatile("csrw sie, %0" : : "r"(x));
 }
 
+#define SSTATUS_SIE (1UL << 1)
 static inline u64
 r_sstatus()
 {
@@ -159,6 +160,19 @@ w_sstatus(u64 x)
   asm volatile("csrw sstatus, %0" : : "r"(x));
 }
 
+// 关中断
+static inline void
+cli()
+{
+  w_sstatus(r_mstatus() & ~SSTATUS_SIE);
+}
+// 开中断
+static inline void
+sti()
+{
+  w_sstatus(r_mstatus() | SSTATUS_SIE);
+}
+
 static inline void
 w_stimecmp(u64 x)
 {
@@ -169,6 +183,20 @@ static inline void
 w_stvec(u64 x)
 {
   asm volatile("csrw stvec, %0" : : "r"(x));
+}
+
+static inline u64
+r_sscratch()
+{
+  u64 x;
+  asm volatile("csrr %0, sscratch" : "=r"(x));
+  return x;
+}
+
+static inline void
+w_sscratch(u64 x)
+{
+  asm volatile("csrw sscratch, %0" : : "r"(x));
 }
 
 // 通用寄存器读写
