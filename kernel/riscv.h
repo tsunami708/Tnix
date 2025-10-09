@@ -146,6 +146,7 @@ w_sie(u64 x)
 }
 
 #define SSTATUS_SIE (1UL << 1)
+#define SSTATUS_SPP (1UL << 8)
 static inline u64
 r_sstatus()
 {
@@ -164,13 +165,13 @@ w_sstatus(u64 x)
 static inline void
 cli()
 {
-  w_sstatus(r_mstatus() & ~SSTATUS_SIE);
+  w_sstatus(r_sstatus() & ~SSTATUS_SIE);
 }
 // 开中断
 static inline void
 sti()
 {
-  w_sstatus(r_mstatus() | SSTATUS_SIE);
+  w_sstatus(r_sstatus() | SSTATUS_SIE);
 }
 
 static inline void

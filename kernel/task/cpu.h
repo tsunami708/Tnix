@@ -20,6 +20,8 @@ struct cpu {
   struct task* cur_task;
   /////
 
+  u8 intr; // 中断状态,0表示中断开启,>0为关闭
+
   struct context ctx;
 };
 
@@ -40,4 +42,19 @@ static inline u64
 cpuid()
 {
   return mycpu()->id;
+}
+
+static inline void
+push_intr()
+{
+  cli();
+  ++mycpu()->intr;
+}
+
+static inline void
+pop_intr()
+{
+  --mycpu()->intr;
+  if (mycpu()->intr == 0)
+    sti();
 }

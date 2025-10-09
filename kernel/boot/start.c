@@ -20,7 +20,7 @@ init_timer()
 void
 start()
 {
-  u64 cpuid      = r_mstatus();
+  u64 cpuid      = r_mhartid();
   cpus[cpuid].id = cpuid;
   w_tp((u64)(cpus + cpuid));
 

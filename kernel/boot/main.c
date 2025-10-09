@@ -27,14 +27,6 @@ main()
     init_trap();
     __sync_synchronize();
   }
-  // w_sstatus(r_sstatus() | 0b10UL);
-
-  // asm volatile("ecall");
-
-  // struct page* p = kalloc();
-  // print("cpu%d get page %x\n", cpuid(), pha(p));
-  // kfree(p);
-  while (1)
-    ;
+  w_sstatus(r_sstatus() | SSTATUS_SIE);
   task_schedule();
 }

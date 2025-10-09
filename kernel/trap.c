@@ -36,6 +36,8 @@ struct pt_regs {
 
 
 extern void ktrap_entry();
+extern void yield();
+
 void
 init_trap()
 {
@@ -103,6 +105,12 @@ asy_timer(struct pt_regs* pt)
 {
   print("%s\n", __func__);
   w_stimecmp(r_time() + TIME_CYCLE);
+  if ((r_sstatus() & SSTATUS_SPP) == 0) {
+    print("timer interrupt from U\n");
+    yield();
+  } else {
+    print("timer interrupt from S\n");
+  }
   return 0;
 }
 static int

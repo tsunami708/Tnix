@@ -11,7 +11,7 @@ holding_spin(struct spinlock* lock)
 void
 acquire_spin(struct spinlock* lock)
 {
-  cli(); // 防止因中断导致锁重入
+  push_intr(); // 防止因中断导致锁重入
   if (holding_spin(lock))
     panic("cpu%d repeat acquire %s", cpuid(), lock->lname);
 
@@ -29,5 +29,10 @@ release_spin(struct spinlock* lock)
   lock->cpu = NULL;
   __sync_synchronize();
   __sync_lock_release(&lock->locked);
-  sti();
+  pop_intr();
 }
+
+/*
+  cpu可能在某个执行流中获取多个自旋锁,在临界区内必须保证不被中断,之前粗暴acquire~cli,release~sti会
+  导致一个锁被释放而开中断,但cpu可能还处在另一个锁的临界区中,容易死锁
+*/
