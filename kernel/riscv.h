@@ -90,6 +90,11 @@ w_mcounteren(u64 x)
 }
 
 // S模式寄存器读写
+static inline void
+w_sepc(u64 x)
+{
+  asm volatile("csrw sepc, %0" : : "r"(x));
+}
 
 static inline u64
 r_time()
@@ -145,8 +150,9 @@ w_sie(u64 x)
   asm volatile("csrw sie, %0" : : "r"(x));
 }
 
-#define SSTATUS_SIE (1UL << 1)
-#define SSTATUS_SPP (1UL << 8)
+#define SSTATUS_SIE  (1L << 1)
+#define SSTATUS_SPIE (1L << 5)
+#define SSTATUS_SPP  (1L << 8)
 static inline u64
 r_sstatus()
 {
@@ -172,6 +178,12 @@ static inline void
 sti()
 {
   w_sstatus(r_sstatus() | SSTATUS_SIE);
+}
+// 获取中断使能状态
+static inline bool
+intr()
+{
+  return (r_sstatus() & SSTATUS_SIE) != 0;
 }
 
 static inline void

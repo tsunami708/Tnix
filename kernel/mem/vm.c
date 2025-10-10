@@ -7,20 +7,16 @@
 
 // 2->1->0
 #define va_level(va, level) (((va >> 12) >> (9 * level)) & 0x1FFUL)
-pagetable_t kernel_pgt; // 内核根页表
 
+pagetable_t kernel_pgt; // 内核根页表
+u64         kernel_satp;
 
 extern char etext[];
 extern char trampoline[];
-extern char init[];
-extern char einit[];
 extern char brodata[];
 extern char erodata[];
 extern char end[];
 #define KCODE_SIZE   (align_up((u64)etext, PGSIZE) - KBASE)
-#define TRAMPOLINE   ((u64)trampoline)
-#define UINIT        ((u64)(init))
-#define UINIT_SIZE   (align_up((u64)(einit), PGSIZE) - UINIT)
 #define KRODATA      ((u64)brodata)
 #define KRODATA_SIZE (align_up((u64)erodata, PGSIZE) - KRODATA)
 #define KDATA        (KRODATA + KRODATA_SIZE)
@@ -37,7 +33,7 @@ vmmap(pagetable_t ptb, u64 va, u64 pa, u64 size, u16 attr, i8 granularity)
 {
   if (va % PGSIZE || pa % PGSIZE)
     panic("vmmap not aligned");
-  if (va + size > MAXVA || pa + size > PHY_TOP)
+  if (va + size > VA_TOP || pa + size > PHY_TOP)
     panic("out of range");
   u64 delta;
   switch (granularity) {
@@ -87,13 +83,16 @@ init_page()
     vmmap(kernel_pgt, UART0, UART0, UART0_SIZE, PTE_R | PTE_W, S_PAGE);
     vmmap(kernel_pgt, VIRIO, VIRIO, VIRIO_SIZE, PTE_R | PTE_W, S_PAGE);
     vmmap(kernel_pgt, KBASE, KBASE, KCODE_SIZE, PTE_R | PTE_X, S_PAGE);
-    vmmap(kernel_pgt, TRAMPOLINE, TRAMPOLINE, PGSIZE, PTE_R | PTE_X, S_PAGE);
-    vmmap(kernel_pgt, UINIT, UINIT, UINIT_SIZE, PTE_R | PTE_X | PTE_U, S_PAGE);
+
+    vmmap(kernel_pgt, (u64)trampoline, (u64)trampoline, PGSIZE, PTE_R | PTE_X, S_PAGE);
+    vmmap(kernel_pgt, TRAMPOLINE, (u64)trampoline, PGSIZE, PTE_R | PTE_X, S_PAGE);
+
+
     vmmap(kernel_pgt, KRODATA, KRODATA, KRODATA_SIZE, PTE_R, S_PAGE);
     vmmap(kernel_pgt, KDATA, KDATA, KDATA_SIZE, PTE_R | PTE_W, S_PAGE);
 
     u64 va    = align_up(KDATA + KDATA_SIZE, PGSIZE);
-    u64 bound = MAXVA > PHY_TOP ? PHY_TOP : MAXVA;
+    u64 bound = VA_TOP > PHY_TOP ? PHY_TOP : VA_TOP;
     for (; va % MPGSIZE && va < bound; va += PGSIZE)
       vmmap(kernel_pgt, va, va, PGSIZE, PTE_R | PTE_W, S_PAGE);
     for (; va % GPGSIZE && va < bound; va += MPGSIZE)
@@ -105,6 +104,7 @@ init_page()
   }
   __sync_synchronize();
   asm volatile("sfence.vma zero, zero");
-  w_satp(SATP_MODE | ((u64)kernel_pgt >> 12));
+  kernel_satp = SATP_MODE | ((u64)kernel_pgt >> 12);
+  w_satp(kernel_satp);
   asm volatile("sfence.vma zero, zero");
 }

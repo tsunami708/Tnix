@@ -42,7 +42,7 @@ void
 init_trap()
 {
   w_stvec((u64)ktrap_entry);
-  // ktrap_entry四字节对齐,地址低2位被解读为Direct模式
+  // ktrap_entry四字节对齐,地址低2位被解读为 Direct模式
 }
 
 static int
@@ -84,13 +84,25 @@ static trap_fn exception_funs[] = {
 int
 do_trap(struct pt_regs* pt, u64 scause)
 {
+  int  r;
+  bool from_user = ((pt->sstatus & SSTATUS_SPP) == 0);
+  if (from_user) {
+    w_stvec((u64)ktrap_entry);
+    print("Happen a trap from U-Mode\n");
+  } else {
+    print("Happen a trap from S-Mode\n");
+  }
   u64 ec = scause & ~(1UL << 63);
   if (scause & (1UL << 63)) {
     ec = min(ec, sizeof(interrupt_funs) / sizeof(trap_fn) - 1);
-    return interrupt_funs[ec](pt);
+    r  = interrupt_funs[ec](pt);
+  } else {
+    ec = min(ec, sizeof(exception_funs) / sizeof(trap_fn) - 1);
+    r  = exception_funs[ec](pt);
   }
-  ec = min(ec, sizeof(exception_funs) / sizeof(trap_fn) - 1);
-  return exception_funs[ec](pt);
+  if (from_user)
+    w_stvec(TRAMPOLINE);
+  return r;
 }
 
 // interrupt handler

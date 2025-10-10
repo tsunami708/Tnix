@@ -1,6 +1,4 @@
 #include "cpu.h"
-#include "alloc.h"
-#include "printf.h"
 
 volatile bool cpu_ok = false;
 
@@ -27,6 +25,6 @@ main()
     init_trap();
     __sync_synchronize();
   }
-  w_sstatus(r_sstatus() | SSTATUS_SIE);
+  // sti();
   task_schedule();
 }

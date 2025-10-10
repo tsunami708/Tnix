@@ -23,7 +23,6 @@ SECTIONS
     . = ALIGN(4096);
     PROVIDE(trampoline = .);
     trampoline_start = .;
-    *(.text.trampoline.utrap_entry)
     *(.text.trampoline)
     ASSERT(. - trampoline_start <= 4096, "Error: trampoline exceeds 4KB");
   } :text

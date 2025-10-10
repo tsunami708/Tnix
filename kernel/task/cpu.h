@@ -16,11 +16,12 @@ struct cpu {
   // 顺序必须固定的字段
   u64          id;
   u64          cur_kstack; // cur_task的kstack副本
-  pagetable_t  cur_ptb;    // cur_task的pagetable副本
+  u64          cur_satp;   // 当前task的satp
   struct task* cur_task;
   /////
 
-  u8 intr; // 中断状态,0表示中断开启,>0为关闭
+  bool raw_intr;  // 不持有自旋锁时的中断状态
+  u8   spinlevel; // 自旋锁层数
 
   struct context ctx;
 };
@@ -47,14 +48,18 @@ cpuid()
 static inline void
 push_intr()
 {
+  struct cpu* c = mycpu();
+  if (c->spinlevel == 0)
+    c->raw_intr = intr();
   cli();
-  ++mycpu()->intr;
+  ++c->spinlevel;
 }
 
 static inline void
 pop_intr()
 {
-  --mycpu()->intr;
-  if (mycpu()->intr == 0)
+  struct cpu* c = mycpu();
+  --c->spinlevel;
+  if (c->spinlevel == 0 && c->raw_intr == true)
     sti();
 }

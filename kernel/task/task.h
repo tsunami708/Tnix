@@ -3,10 +3,6 @@
 #include "list.h"
 #include "spinlock.h"
 #include "cpu.h"
-#include "config.h"
-
-#define UTRAMPOLINE align_down(MAXVA, PGSIZE)
-#define USTACK      (UTRAMPOLINE - PGSIZE) // 4KB栈
 
 enum task_state {
   INIT,
@@ -18,13 +14,14 @@ enum task_state {
 
 struct task {
   // 顺序必须固定的字段
-  u64 entry; // 入口地址
-
+  u64 entry;  // 入口地址
+  u64 ustack; // 用户栈页地址
+  u64 kstack; // 内核栈页地址
   ////
-  u64         kstack;
+
   pagetable_t pagetable;
 
-  u64 ustack;
+
   u16 pid, tid;
 
   enum task_state state;
