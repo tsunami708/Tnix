@@ -37,6 +37,8 @@ struct pt_regs {
 
 extern void ktrap_entry();
 extern void yield();
+extern char trampoline[];
+extern char utrap_entry[];
 
 void
 init_trap()
@@ -101,7 +103,7 @@ do_trap(struct pt_regs* pt, u64 scause)
     r  = exception_funs[ec](pt);
   }
   if (from_user)
-    w_stvec(TRAMPOLINE);
+    w_stvec((u64)utrap_entry - (u64)trampoline + TRAMPOLINE);
   return r;
 }
 

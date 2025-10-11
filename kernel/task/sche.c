@@ -1,6 +1,7 @@
 #include "config.h"
 #include "task.h"
 #include "cpu.h"
+#include "printf.h"
 
 extern struct task task_queue[NPROC];
 
@@ -17,9 +18,7 @@ first_sched()
   release_spin(&t->lock);
   u64 addr = (u64)run_new_task - (u64)trampoline + TRAMPOLINE;
   cli();
-  u64 q = (u64)utrap_entry - (u64)trampoline + TRAMPOLINE;
-
-  w_stvec(q);
+  w_stvec((u64)utrap_entry - (u64)trampoline + TRAMPOLINE);
   w_sstatus((r_sstatus() & ~SSTATUS_SPP) | SSTATUS_SPIE);
   w_sepc(t->entry);
   ((void (*)(u64, u64))addr)(mycpu()->cur_satp, t->ustack);
@@ -33,6 +32,7 @@ yield()
   t->state = READY;
   context_switch(&t->ctx, &mycpu()->ctx);
   release_spin(&t->lock); //*
+  print("CPU %u re-sche systemd\n", cpuid());
 }
 
 void

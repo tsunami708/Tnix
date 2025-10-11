@@ -151,6 +151,7 @@ ktrap_entry:
 #include "config.h"
 #define TASK_KSTACK 8
 #define TASK_USATP  16
+#define DO_TRAP 32
 .align 2
 utrap_entry:
   csrw sscratch, sp #保存用户态栈指针
@@ -168,13 +169,18 @@ utrap_entry:
 
   mv a0, sp
   csrr a1, scause
-  call do_trap
+  ld t0, DO_TRAP(tp)
+  jalr t0     #不适用call指令,call是相对寻址,再高虚拟地址执行会出现页表访问错误
 
   ld a0, PT_SP(sp)
   csrw sscratch, a0
   store_pt_reg
-  csrr sp, sscratch #恢复用户栈
 
+  sfence.vma zero, zero
+  ld sp, TASK_USATP(tp)
+  csrw satp, sp
+  sfence.vma zero, zero
+  csrr sp, sscratch  #恢复用户栈
   sret
 
 

@@ -24,12 +24,12 @@ uart_putc(const char c)
 }
 
 
-#define parse_para(vp)                                                        \
-  asm volatile("sd a1, %0 " : "=m"(vp.a1));                                   \
-  asm volatile("sd a2, %0 " : "=m"(vp.a2));                                   \
-  asm volatile("sd a3, %0 " : "=m"(vp.a3));                                   \
-  asm volatile("sd a4, %0 " : "=m"(vp.a4));                                   \
-  asm volatile("sd a5, %0 " : "=m"(vp.a5));                                   \
+#define parse_para(vp)                                                                                                 \
+  asm volatile("sd a1, %0 " : "=m"(vp.a1));                                                                            \
+  asm volatile("sd a2, %0 " : "=m"(vp.a2));                                                                            \
+  asm volatile("sd a3, %0 " : "=m"(vp.a3));                                                                            \
+  asm volatile("sd a4, %0 " : "=m"(vp.a4));                                                                            \
+  asm volatile("sd a5, %0 " : "=m"(vp.a5));                                                                            \
   vp.i = 0
 
 #define fetch_para(vp) (*(u64*)((u64)vp + 8 * vp->i++))

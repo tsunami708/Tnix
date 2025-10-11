@@ -18,6 +18,7 @@ struct cpu {
   u64          cur_kstack; // cur_task的kstack副本
   u64          cur_satp;   // 当前task的satp
   struct task* cur_task;
+  u64          trap_addr;
   /////
 
   bool raw_intr;  // 不持有自旋锁时的中断状态

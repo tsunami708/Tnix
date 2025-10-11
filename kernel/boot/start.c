@@ -2,8 +2,9 @@
 #include "type.h"
 #include "riscv.h"
 #include "cpu.h"
-
+struct pt_regs;
 extern void main();
+extern int  do_trap(struct pt_regs*, u64);
 
 __attribute__((aligned(16))) char cpu_stack[PGSIZE * NCPU];
 
@@ -20,8 +21,9 @@ init_timer()
 void
 start()
 {
-  u64 cpuid      = r_mhartid();
-  cpus[cpuid].id = cpuid;
+  u64 cpuid             = r_mhartid();
+  cpus[cpuid].id        = cpuid;
+  cpus[cpuid].trap_addr = (u64)do_trap;
   w_tp((u64)(cpus + cpuid));
 
   // mstatus的bit11-bit12标识trap到M模式时之前的模式
@@ -43,8 +45,7 @@ start()
   w_pmpaddr0(0x3FFFFFFFFFFFFF); // 授权S模式物理地址访问空间
   w_pmpcfg0(0xF);               // 授权S模式物理地址访问权限
   // w_sie(r_sie() | SIE_SEIE | SIE_STIE | SIE_SSIE);
-  // w_sie(r_sie() | SIE_STIE);
-  w_sie(0);
+  w_sie(r_sie() | SIE_STIE);
   init_timer();
   asm volatile("mret");
 
