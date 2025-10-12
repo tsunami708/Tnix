@@ -112,7 +112,7 @@
   ld t5, PT_T5(sp)
   ld t6, PT_T6(sp)
 
-  ld tp, PT_TP(sp)
+
   ld gp, PT_GP(sp)
   ld ra, PT_RA(sp)
 

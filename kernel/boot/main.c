@@ -27,7 +27,5 @@ main()
   }
 
   sti();
-  while (1)
-    ;
-  // task_schedule();
+  task_schedule();
 }
