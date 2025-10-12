@@ -25,6 +25,9 @@ main()
     init_trap();
     __sync_synchronize();
   }
+
   sti();
-  task_schedule();
+  while (1)
+    ;
+  // task_schedule();
 }

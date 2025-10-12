@@ -35,7 +35,7 @@
 #define PT_A7      272
 #define PT_SIZE    280
 
-.macro load_pt_reg
+.macro save_trap_context
   addi sp, sp, -PT_SIZE
   sd ra, PT_RA(sp)
   sd gp, PT_GP(sp)
@@ -81,16 +81,7 @@
   sd a0,PT_SCAUSE(sp)
 .endm
 
-.macro store_pt_reg
-  ld a0, PT_SEPC(sp)
-  csrw sepc, a0
-  ld a0, PT_SSTATUS(sp)
-  csrw sstatus, a0
-  ld a0, PT_STVAL(sp)
-  csrw stval, a0
-  ld a0, PT_SCAUSE(sp)
-  csrw scause, a0
-
+.macro recover_trap_context
   ld a0, PT_A0(sp)
   ld a1, PT_A1(sp)
   ld a2, PT_A2(sp)
@@ -137,13 +128,12 @@
 .section .text
 .align 2
 ktrap_entry:
-  load_pt_reg
+  save_trap_context
   addi a0, sp, PT_SIZE
   sd a0, PT_SP(sp)
   mv a0, sp
-  csrr a1, scause 
   call do_trap
-  store_pt_reg
+  recover_trap_context
   sret
 
 
@@ -163,18 +153,17 @@ utrap_entry:
   sfence.vma zero, zero
 
   ld sp, TASK_KSTACK(tp) #获取内核栈地址
-  load_pt_reg
+  save_trap_context
   csrr a0, sscratch
   sd a0, PT_SP(sp)
 
   mv a0, sp
-  csrr a1, scause
   ld t0, DO_TRAP(tp)
   jalr t0     #不适用call指令,call是相对寻址,再高虚拟地址执行会出现页表访问错误
 
   ld a0, PT_SP(sp)
   csrw sscratch, a0
-  store_pt_reg
+  recover_trap_context
 
   sfence.vma zero, zero
   ld sp, TASK_USATP(tp)

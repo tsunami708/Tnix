@@ -8,11 +8,12 @@ struct var_para {
   u64 a3;
   u64 a4;
   u64 a5;
+  u64 a6;
+  u64 a7;
   u8  i;
 };
 
 INIT_SPINLOCK(pr);
-volatile bool panicing = false;
 
 static const char digits[] = "0123456789ABCDEF";
 
@@ -30,6 +31,8 @@ uart_putc(const char c)
   asm volatile("sd a3, %0 " : "=m"(vp.a3));                                                                            \
   asm volatile("sd a4, %0 " : "=m"(vp.a4));                                                                            \
   asm volatile("sd a5, %0 " : "=m"(vp.a5));                                                                            \
+  asm volatile("sd a6, %0 " : "=m"(vp.a6));                                                                            \
+  asm volatile("sd a7, %0 " : "=m"(vp.a7));                                                                            \
   vp.i = 0
 
 #define fetch_para(vp) (*(u64*)((u64)vp + 8 * vp->i++))
@@ -87,51 +90,6 @@ print(const char* fmt, ...)
   struct var_para vp;
   parse_para(vp);
   acquire_spin(&pr);
-  while (!panicing && *fmt != '\0') {
-    if (*fmt == '%') {
-      ++fmt;
-      if (*fmt == 'd' || *fmt == 'u' || *fmt == 'x' || *fmt == 's') {
-        switch (*fmt) {
-        case 'd':
-          printint(10, &vp);
-          break;
-        case 'u':
-          printuint(10, &vp);
-          break;
-        case 'x':
-          printstr("0x");
-          printuint(16, &vp);
-          break;
-        case 's':
-          printstr((const char*)fetch_para((&vp)));
-          break;
-        }
-        ++fmt;
-        continue;
-      }
-      --fmt;
-    }
-    uart_putc(*fmt);
-    ++fmt;
-  }
-  release_spin(&pr);
-  if (panicing)
-    goto bad;
-  return;
-bad:
-  while (1)
-    ;
-}
-
-void
-panic(const char* fmt, ...)
-{
-  if (__atomic_load_n(&panicing, __ATOMIC_SEQ_CST))
-    goto bad;
-  __atomic_store_n(&panicing, true, __ATOMIC_SEQ_CST);
-  struct var_para vp;
-  parse_para(vp);
-  printstr("\n\n\npanic: ");
   while (*fmt != '\0') {
     if (*fmt == '%') {
       ++fmt;
@@ -159,7 +117,44 @@ panic(const char* fmt, ...)
     uart_putc(*fmt);
     ++fmt;
   }
-bad:
+  release_spin(&pr);
+}
+
+void
+panic(const char* fmt, ...)
+{
+  acquire_spin(&pr); // 故意不释放锁
+  struct var_para vp;
+  parse_para(vp);
+  printstr("\n\npanic: ");
+  while (*fmt != '\0') {
+    if (*fmt == '%') {
+      ++fmt;
+      if (*fmt == 'd' || *fmt == 'u' || *fmt == 'x' || *fmt == 's') {
+        switch (*fmt) {
+        case 'd':
+          printint(10, &vp);
+          break;
+        case 'u':
+          printuint(10, &vp);
+          break;
+        case 'x':
+          printstr("0x");
+          printuint(16, &vp);
+          break;
+        case 's':
+          printstr((const char*)fetch_para((&vp)));
+          break;
+        }
+        ++fmt;
+        continue;
+      }
+      --fmt;
+    }
+    uart_putc(*fmt);
+    ++fmt;
+  }
+  uart_putc('\n');
   while (1)
     ;
 }

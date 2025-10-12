@@ -23,6 +23,7 @@ RISC-V trap软件处理流程:
 #include "type.h"
 #include "riscv.h"
 #include "printf.h"
+#include "cpu.h"
 #include "config.h"
 
 // 不要改变struct pt_regs的字段顺序
@@ -34,11 +35,14 @@ struct pt_regs {
   u64 a0, a1, a2, a3, a4, a5, a6, a7;
 };
 
+#define IS_INTR(scause)   ((scause & (1UL << 63)) != 0)
+#define SCAUSE_EC(scause) (scause & ~(1UL << 63))
 
 extern void ktrap_entry();
+extern void utrap_entry();
+
 extern void yield();
 extern char trampoline[];
-extern char utrap_entry[];
 
 void
 init_trap()
@@ -46,159 +50,184 @@ init_trap()
   w_stvec((u64)ktrap_entry);
   // ktrap_entry四字节对齐,地址低2位被解读为 Direct模式
 }
-
-static int
+static void
 unknow_trap(struct pt_regs* pt)
 {
-  panic("%s %s %u", __func__, pt->scause & (1UL << 63) ? "int" : "ex", pt->scause);
-  return 0;
+  u64  ec      = SCAUSE_EC(pt->scause);
+  bool intr    = IS_INTR(pt->scause);
+  u64  stval   = pt->stval;
+  u64  sepc    = pt->sepc;
+  u64  sstatus = pt->sstatus;
+  bool mode    = sstatus & SSTATUS_SPP;
+
+
+  panic("CPU%d Occur an unknown %s trap \n  \
+      scause %s %u\n  \
+      stval %x\n  \
+      sepc %x\n  \
+      sstatus %x\n\n",
+        cpuid(), mode == 0 ? "U" : "S", intr ? "interrupt" : "exception", ec, stval, sepc, sstatus);
 }
 
 // interrupt handler
-static int asy_ipi(struct pt_regs*);
-static int asy_timer(struct pt_regs*);
-static int asy_extern(struct pt_regs*);
+static void asy_ipi(struct pt_regs*);    // 1
+static void asy_timer(struct pt_regs*);  // 5
+static void asy_extern(struct pt_regs*); // 9
 
 // exception handler
-static int syn_text_misaligned(struct pt_regs*);
-static int syn_text_fault(struct pt_regs*);
-static int syn_text_illegal(struct pt_regs*);
-static int syn_breakpoint(struct pt_regs*);
-static int syn_load_fault(struct pt_regs*);
-static int syn_store_misaligned(struct pt_regs*);
-static int syn_store_fault(struct pt_regs*);
-static int syn_syscall(struct pt_regs*);
-static int syn_text_page_fault(struct pt_regs*);
-static int syn_load_page_fault(struct pt_regs*);
-static int syn_store_page_fault(struct pt_regs*);
+static void syn_text_misaligned(struct pt_regs*);  // 0
+static void syn_text_fault(struct pt_regs*);       // 1
+static void syn_text_illegal(struct pt_regs*);     // 2
+static void syn_breakpoint(struct pt_regs*);       // 3
+static void syn_load_misaligned(struct pt_regs*);  // 4
+static void syn_load_fault(struct pt_regs*);       // 5
+static void syn_store_misaligned(struct pt_regs*); // 6
+static void syn_store_fault(struct pt_regs*);      // 7
+static void syn_syscall_u(struct pt_regs*);        // 8
+static void syn_syscall_s(struct pt_regs*);        // 9
+static void syn_text_page_fault(struct pt_regs*);  // 12
+static void syn_load_page_fault(struct pt_regs*);  // 13
+static void syn_store_page_fault(struct pt_regs*); // 15
 
-typedef int (*trap_fn)(struct pt_regs* pt);
+typedef void (*trap_fn)(struct pt_regs* pt);
 static trap_fn interrupt_funs[] = {
   unknow_trap, asy_ipi,     unknow_trap, unknow_trap, unknow_trap, asy_timer,
   unknow_trap, unknow_trap, unknow_trap, asy_extern,  unknow_trap,
 };
 static trap_fn exception_funs[] = {
-  syn_text_misaligned,  syn_text_fault,      syn_text_illegal, syn_breakpoint,       unknow_trap, syn_load_fault,
-  syn_store_misaligned, syn_store_fault,     syn_syscall,      syn_syscall,          unknow_trap, unknow_trap,
-  syn_text_page_fault,  syn_load_page_fault, unknow_trap,      syn_store_page_fault, unknow_trap,
+  syn_text_misaligned,  syn_text_fault,       syn_text_illegal,    syn_breakpoint,      syn_load_misaligned,
+  syn_load_fault,       syn_store_misaligned, syn_store_fault,     syn_syscall_u,       syn_syscall_s,
+  unknow_trap,          unknow_trap,          syn_text_page_fault, syn_load_page_fault, unknow_trap,
+  syn_store_page_fault, unknow_trap,
 };
 
-int
-do_trap(struct pt_regs* pt, u64 scause)
+void
+do_trap(struct pt_regs* pt)
 {
-  int  r;
+  u64  scause    = pt->scause;
+  u64  ec        = SCAUSE_EC(scause);
   bool from_user = ((pt->sstatus & SSTATUS_SPP) == 0);
   if (from_user) {
-    w_stvec((u64)ktrap_entry);
-    print("Happen a trap from U-Mode\n");
-  } else {
-    print("Happen a trap from S-Mode\n");
-  }
-  u64 ec = scause & ~(1UL << 63);
-  if (scause & (1UL << 63)) {
+    print("cpu%d U-TRAP\n", cpuid());
+    w_stvec((u64)ktrap_entry); // 进入do_trap是一定是关中断的
+    sti();                     // 保存好trap上下文开启中断以允许嵌套
+  } else
+    print("cpu%d S-TRAP\n", cpuid());
+  if (IS_INTR(scause)) {
     ec = min(ec, sizeof(interrupt_funs) / sizeof(trap_fn) - 1);
-    r  = interrupt_funs[ec](pt);
+    interrupt_funs[ec](pt);
   } else {
     ec = min(ec, sizeof(exception_funs) / sizeof(trap_fn) - 1);
-    r  = exception_funs[ec](pt);
+    exception_funs[ec](pt);
   }
-  if (from_user)
+
+  if (from_user) {
+    cli();
     w_stvec((u64)utrap_entry - (u64)trampoline + TRAMPOLINE);
-  return r;
+  }
+  // sstatus和spec可能会被嵌套trap所修改,sret会清SPP位
+  w_sstatus(pt->sstatus);
+  w_sepc(pt->sepc);
 }
 
 // interrupt handler
-static int
+static void
 asy_ipi(struct pt_regs* pt)
 {
+  print("cpu%u trigger %s\n", cpuid(), __func__);
   unknow_trap(pt);
-  return 0;
 }
-static int
+static void
 asy_timer(struct pt_regs* pt)
 {
-  print("%s\n", __func__);
+  print("cpu%u trigger %s\n", cpuid(), __func__);
   w_stimecmp(r_time() + TIME_CYCLE);
-  if ((r_sstatus() & SSTATUS_SPP) == 0) {
-    print("timer interrupt from U\n");
+  if ((r_sstatus() & SSTATUS_SPP) == 0)
     yield();
-  } else {
-    print("timer interrupt from S\n");
-  }
-  return 0;
 }
-static int
+static void
 asy_extern(struct pt_regs* pt)
 {
+  print("cpu%u trigger %s\n", cpuid(), __func__);
   unknow_trap(pt);
-  return 0;
 }
 
 // exception handler
-static int
+static void
 syn_text_misaligned(struct pt_regs* pt)
 {
+  print("cpu%u trigger %s\n", cpuid(), __func__);
   unknow_trap(pt);
-  return 0;
 }
-static int
+static void
 syn_text_fault(struct pt_regs* pt)
 {
+  print("cpu%u trigger %s\n", cpuid(), __func__);
   unknow_trap(pt);
-  return 0;
 }
-static int
+static void
 syn_text_illegal(struct pt_regs* pt)
 {
+  print("cpu%u trigger %s\n", cpuid(), __func__);
   unknow_trap(pt);
-  return 0;
 }
-static int
+static void
 syn_breakpoint(struct pt_regs* pt)
 {
+  print("cpu%u trigger %s\n", cpuid(), __func__);
   unknow_trap(pt);
-  return 0;
 }
-static int
+static void
+syn_load_misaligned(struct pt_regs* pt)
+{
+  print("cpu%u trigger %s\n", cpuid(), __func__);
+  unknow_trap(pt);
+}
+static void
 syn_load_fault(struct pt_regs* pt)
 {
+  print("cpu%u trigger %s\n", cpuid(), __func__);
   unknow_trap(pt);
-  return 0;
 }
-static int
+static void
 syn_store_misaligned(struct pt_regs* pt)
 {
+  print("cpu%u trigger %s\n", cpuid(), __func__);
   unknow_trap(pt);
-  return 0;
 }
-static int
+static void
 syn_store_fault(struct pt_regs* pt)
 {
+  print("cpu%u trigger %s\n", cpuid(), __func__);
   unknow_trap(pt);
-  return 0;
 }
-static int
-syn_syscall(struct pt_regs* pt)
+static void
+syn_syscall_u(struct pt_regs* pt)
 {
-  print("%s\n", __func__);
+  print("cpu%u trigger %s\n", cpuid(), __func__);
   pt->sepc += 4;
-  return 0;
 }
-static int
+static void
+syn_syscall_s(struct pt_regs* pt)
+{
+  print("cpu%u trigger %s\n", cpuid(), __func__);
+  pt->sepc += 4;
+}
+static void
 syn_text_page_fault(struct pt_regs* pt)
 {
+  print("cpu%u trigger %s\n", cpuid(), __func__);
   unknow_trap(pt);
-  return 0;
 }
-static int
+static void
 syn_load_page_fault(struct pt_regs* pt)
 {
+  print("cpu%u trigger %s\n", cpuid(), __func__);
   unknow_trap(pt);
-  return 0;
 }
-static int
+static void
 syn_store_page_fault(struct pt_regs* pt)
 {
+  print("cpu%u trigger %s\n", cpuid(), __func__);
   unknow_trap(pt);
-  return 0;
 }
