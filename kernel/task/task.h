@@ -12,6 +12,10 @@ enum task_state {
   EXIT,
 };
 
+struct trapframe {
+  u64 ksatp;
+};
+
 struct task {
   // 顺序必须固定的字段
   u64 entry;  // 入口地址

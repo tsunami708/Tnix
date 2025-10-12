@@ -81,7 +81,7 @@
   sd a0,PT_SCAUSE(sp)
 .endm
 
-.macro recover_trap_context
+.macro recover_trap_context  #不需要恢复控制寄存器,do_trap函数退出前会恢复sstatus和sepc(以实现正确嵌套trap)
   ld a0, PT_A0(sp)
   ld a1, PT_A1(sp)
   ld a2, PT_A2(sp)

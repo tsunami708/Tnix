@@ -24,7 +24,7 @@ struct cpu {
   bool raw_intr;  // 不持有自旋锁时的中断状态
   u8   spinlevel; // 自旋锁层数
 
-  struct context ctx;
+  struct context ctx; // 调度器自身上下文
 };
 
 

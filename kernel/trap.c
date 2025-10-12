@@ -27,8 +27,9 @@ RISC-V trap软件处理流程:
 #include "config.h"
 
 // 不要改变struct pt_regs的字段顺序
+// 异常上下文
 struct pt_regs {
-  u64 ra, sp, gp, tp;
+  u64 ra, sp, gp, tp; // tp其实可以不用保存
   u64 sepc, sstatus, stval, scause;
   u64 t0, t1, t2, t3, t4, t5, t6;
   u64 s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11;
@@ -109,10 +110,11 @@ do_trap(struct pt_regs* pt)
   bool from_user = ((pt->sstatus & SSTATUS_SPP) == 0);
   if (from_user) {
     print("cpu%d U-TRAP\n", cpuid());
-    w_stvec((u64)ktrap_entry); // 进入do_trap是一定是关中断的
-    sti();                     // 保存好trap上下文开启中断以允许嵌套
+    w_stvec((u64)ktrap_entry); // 进入do_trap时一定是关中断的
+    sti();                     // 保存好trap上下文开启中断以允许嵌套(让S模式也能响应中断)
   } else
-    print("cpu%d S-TRAP\n", cpuid());
+    print("cpu%d S-TRAP\n", cpuid()); // S模式不设计为嵌套中断
+
   if (IS_INTR(scause)) {
     ec = min(ec, sizeof(interrupt_funs) / sizeof(trap_fn) - 1);
     interrupt_funs[ec](pt);
@@ -125,7 +127,8 @@ do_trap(struct pt_regs* pt)
     cli();
     w_stvec((u64)utrap_entry - (u64)trampoline + TRAMPOLINE);
   }
-  // sstatus和spec可能会被嵌套trap所修改,sret会清SPP位
+
+  // ! sstatus和spec可能会被嵌套trap所修改,sret会清SPP位
   w_sstatus(pt->sstatus);
   w_sepc(pt->sepc);
 }

@@ -1,12 +1,10 @@
 .section .text
 .global entry
 .extern start
-
 .extern cpu_stack
 
 entry:
-  #为每一个CPU分配4KB大小的初始栈空间
-  li a3, 4096
+  li a3, 4096 #为每一个CPU分配4KB大小的初始栈空间
   la sp, cpu_stack
   csrr a1, mhartid
   addi a0, a1, 1

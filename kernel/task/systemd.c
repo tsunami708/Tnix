@@ -36,8 +36,8 @@ init_systemd()
   t->kstack        = pha(kst) + PGSIZE; // 为1号task分配内核栈
   insert_list(&t->pages, &kst->page_node);
 
-  struct page* tf = kalloc(); // 为1号task分配trapframe只读页
-  *(u64*)pha(tf)  = kernel_satp;
+  struct page* tf                     = kalloc();    // 为1号task分配trapframe只读页
+  ((struct trapframe*)pha(tf))->ksatp = kernel_satp; // 目前只保存一个内核satp值
   insert_list(&t->pages, &tf->page_node);
 
   struct page* ust = kalloc();

@@ -16,7 +16,7 @@ first_sched()
 {
   struct task* t = mytask();
   release_spin(&t->lock);
-  u64 addr = (u64)run_new_task - (u64)trampoline + TRAMPOLINE;
+  u64 addr = (u64)run_new_task - (u64)trampoline + TRAMPOLINE; // run_new_task的高虚拟地址
 
   cli();
   /*
@@ -47,7 +47,7 @@ void
 task_schedule()
 {
   while (1) {
-    for (int i = 0; i < 2; ++i) {
+    for (int i = 0; i < NPROC; ++i) {
       struct task* t = task_queue + i;
       struct cpu*  c = mycpu();
       acquire_spin(&t->lock); //*

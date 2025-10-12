@@ -1,19 +1,7 @@
 #include "printf.h"
 #include "spinlock.h"
-/*仅支持d,u,s,x且数值均视为64位*/
 
-struct var_para {
-  u64 a1;
-  u64 a2;
-  u64 a3;
-  u64 a4;
-  u64 a5;
-  u64 a6;
-  u64 a7;
-  u8  i;
-};
-
-INIT_SPINLOCK(pr);
+INIT_SPINLOCK(pr); // 防止多核交错打印
 
 static const char digits[] = "0123456789ABCDEF";
 
@@ -36,6 +24,22 @@ uart_putc(const char c)
   vp.i = 0
 
 #define fetch_para(vp) (*(u64*)((u64)vp + 8 * vp->i++))
+
+/*仅支持d,u,s,x且数值均视为64位*/
+/*
+RISC-V当参数<=8时从左到右a0~a7寄存器传递
+*/
+struct var_para {
+  u64 a1;
+  u64 a2;
+  u64 a3;
+  u64 a4;
+  u64 a5;
+  u64 a6;
+  u64 a7;
+  u8  i;
+};
+
 
 static void
 printstr(const char* ch)

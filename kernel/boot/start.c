@@ -25,6 +25,7 @@ start()
   cpus[cpuid].id        = cpuid;
   cpus[cpuid].trap_addr = (u64)do_trap;
   w_tp((u64)(cpus + cpuid));
+  /*每一个核的tp寄存器保存自身的struct cpu地址,在整个运行期间保持不变*/
 
   // mstatus的bit11-bit12标识trap到M模式时之前的模式
   // 在启动阶段通过伪造一个trap方便后续以S模式进入到初始化函数

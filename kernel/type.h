@@ -20,4 +20,4 @@
 #define min(a, b) (a < b ? a : b)
 
 #define pte_t       u64
-#define pagetable_t pte_t* // 指示根页表
+#define pagetable_t pte_t* // 根页表

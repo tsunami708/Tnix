@@ -1,0 +1,19 @@
+BasedOnStyle: GNU
+MaxEmptyLinesToKeep: 10
+SortIncludes: false
+SpaceBeforeParens: ControlStatements
+BraceWrapping:
+  AfterFunction: true    
+  AfterStruct: false     
+  AfterEnum: false       
+  AfterUnion: false      
+  AfterControlStatement: false  
+  AfterCaseLabel: true 
+BreakBeforeBraces: Custom
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+AlignConsecutiveMacros: true
+AlignConsecutiveBitFields: true
+AlignOperands: true
+PointerAlignment: Left
+ColumnLimit: 120
