@@ -50,12 +50,15 @@ OBJS = \
 	$K/task/sche.o \
 	$K/task/switch.o \
 	$K/task/systemd.o \
+	$K/dev/uart.o \
+	$K/dev/disk.o \
 	$K/spinlock.o \
 	$K/printf.o \
 	$K/list.o \
 	$K/string.o \
 	$K/trap.o \
 	$K/pt_reg.o \
+	$K/plic.o \
 
 $K/kernel: $(OBJS) $K/kernel.ld
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS) 

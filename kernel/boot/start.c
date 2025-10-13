@@ -45,9 +45,9 @@ start()
   w_mideleg(0xFFFF);            // 将中断委托给S模式
   w_pmpaddr0(0x3FFFFFFFFFFFFF); // 授权S模式物理地址访问空间
   w_pmpcfg0(0xF);               // 授权S模式物理地址访问权限
-  // w_sie(r_sie() | SIE_SEIE | SIE_STIE | SIE_SSIE);
-  w_sie(r_sie() | SIE_STIE);
+
   init_timer();
+  w_sie(r_sie() | SIE_STIE | SIE_SSIE);
   asm volatile("mret");
 
   // mret做的事

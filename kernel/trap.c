@@ -25,6 +25,8 @@ RISC-V trap软件处理流程:
 #include "printf.h"
 #include "cpu.h"
 #include "config.h"
+#include "plic.h"
+#include "irqf.h"
 
 // 不要改变struct pt_regs的字段顺序
 // 异常上下文
@@ -152,7 +154,17 @@ static void
 asy_extern(struct pt_regs* pt)
 {
   print("cpu%u trigger %s\n", cpuid(), __func__);
-  unknow_trap(pt);
+  u32 irq = plic_claim();
+  switch (irq) {
+  case IRQ_UART0:
+    do_uart_irq();
+    break;
+  case IRQ_DISK:
+    do_disk_irq();
+    break;
+  default:
+    unknow_trap(pt);
+  }
 }
 
 // exception handler
