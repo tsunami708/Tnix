@@ -44,6 +44,34 @@ yield()
 }
 
 void
+sleep(void* chan, struct spinlock* lock) // 当前在申请睡眠锁时最多只能持有1个自旋锁
+{
+  struct task* t = mytask();
+  if (lock)
+    release_spin(lock);
+  acquire_spin(&t->lock);
+  t->chan  = chan;
+  t->state = SLEEP;
+  context_switch(&t->ctx, &mycpu()->ctx);
+  t->chan = NULL;
+  release_spin(&t->lock);
+  if (lock)
+    acquire_spin(lock); //! 重新申请因等待而被暂时释放的自旋锁
+}
+
+void
+wakeup(void* chan)
+{
+  for (int i = 0; i < NPROC; ++i) {
+    struct task* t = task_queue + i;
+    acquire_spin(&t->lock);
+    if (t->state == SLEEP && t->chan == chan)
+      t->state = READY;
+    release_spin(&t->lock);
+  }
+}
+
+void
 task_schedule()
 {
   while (1) {

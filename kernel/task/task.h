@@ -28,6 +28,8 @@ struct task {
 
   u16 pid, tid;
 
+  void* chan;
+
   enum task_state state;
   struct spinlock lock;
   struct context  ctx;

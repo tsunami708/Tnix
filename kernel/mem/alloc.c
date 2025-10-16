@@ -11,7 +11,7 @@ INIT_SPINLOCK(mem_spin);
 INIT_LIST(pages_head);
 
 void
-init_mem()
+init_memory()
 {
   for (u64 phy_addr = PHY_MEMORY; phy_addr < PHY_TOP; phy_addr += PGSIZE) {
     struct page* p = phy_mem + page_num(phy_addr);

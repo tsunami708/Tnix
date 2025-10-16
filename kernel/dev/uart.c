@@ -13,18 +13,17 @@
 #define LSB 0
 #define MSB 1
 
-#define reg(r) (volatile uchar*)(UART0 + r)
+#define reg(r) (volatile char*)(UART0 + r)
 
-typedef unsigned char uchar;
 
-static inline uchar
+static inline char
 r_reg(int r)
 {
   return *reg(r);
 }
 
 static inline void
-w_reg(int r, uchar v)
+w_reg(int r, char v)
 {
   *reg(r) = v;
 }
@@ -49,17 +48,17 @@ init_uart()
 #define LSR_R (1 << 0)
 #define LSR_W (1 << 5)
 
-uchar
+
+
+char
 uart_get()
 {
-again:
   if (r_reg(LSR) & LSR_R)
     return r_reg(RHR);
-  goto again;
-  // return -1;
+  return -1;
 }
 void
-uart_put(uchar c)
+uart_put_syn(char c)
 {
   while ((r_reg(LSR) & LSR_W) == 0)
     ;
@@ -69,29 +68,17 @@ uart_put(uchar c)
 void
 do_uart_irq()
 {
-  // TEST
-  init_uart();
-  uart_put('H');
-  uart_put('e');
-  uart_put('l');
-  uart_put('l');
-  uart_put('o');
-  uart_put(',');
-  uart_put('w');
-  uart_put('o');
-  uart_put('r');
-  uart_put('l');
-  uart_put('d');
-  uart_put('\n');
-  while (1) {
-    uchar c = uart_get();
-    if (c == '\r')
-      uart_put('\n');
-    else if (c == 0x8) {
-      uart_put('\b');
-      uart_put(' ');
-      uart_put('\b');
-    } else
-      uart_put(c);
+  char ch = uart_get();
+  if (ch != (char)-1) {
+    if (ch == '\r')
+      uart_put_syn('\n');
+    else if (ch == 127) { // backspace
+      uart_put_syn('\b');
+      uart_put_syn(' ');
+      uart_put_syn('\b');
+    } else if (ch == 16)
+      uart_put_syn('P'); // ctrl+p
+    else
+      uart_put_syn(ch);
   }
 }

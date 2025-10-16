@@ -10,13 +10,13 @@ __attribute__((aligned(16))) char cpu_stack[PGSIZE * NCPU];
 
 struct cpu cpus[NCPU];
 
-static void
-init_timer()
-{
-  w_menvcfg(r_menvcfg() | (1UL << 63)); // 为 S 模式启用 stimecmp
-  w_mcounteren(r_mcounteren() | 2);     // 使能S\U模式下的 time 系统寄存器
-  w_stimecmp(r_time() + TIME_CYCLE);
-}
+// static void
+// init_timer()
+// {
+//   w_menvcfg(r_menvcfg() | (1UL << 63)); // 为 S 模式启用 stimecmp
+//   w_mcounteren(r_mcounteren() | 2);     // 使能S\U模式下的 time 系统寄存器
+//   w_stimecmp(r_time() + TIME_CYCLE);
+// }
 
 void
 start()
@@ -46,8 +46,8 @@ start()
   w_pmpaddr0(0x3FFFFFFFFFFFFF); // 授权S模式物理地址访问空间
   w_pmpcfg0(0xF);               // 授权S模式物理地址访问权限
 
-  init_timer();
-  w_sie(r_sie() | SIE_STIE | SIE_SSIE);
+  // init_timer();
+  // w_sie(r_sie() | SIE_STIE | SIE_SSIE);
   asm volatile("mret");
 
   // mret做的事

@@ -5,13 +5,7 @@ INIT_SPINLOCK(pr); // 防止多核交错打印
 
 static const char digits[] = "0123456789ABCDEF";
 
-#define UART_TX 0x10000000
-static inline void
-uart_putc(const char c)
-{
-  *(volatile unsigned char*)UART_TX = c;
-}
-
+extern void uart_put_syn(char c);
 
 #define parse_para(vp)                                                                                                 \
   asm volatile("sd a1, %0 " : "=m"(vp.a1));                                                                            \
@@ -45,7 +39,7 @@ static void
 printstr(const char* ch)
 {
   while (*ch != '\0') {
-    uart_putc(*ch);
+    uart_put_syn(*ch);
     ++ch;
   }
 }
@@ -56,7 +50,7 @@ printuint(i8 ns, struct var_para* vp) // ns表示进制
   u64  num     = fetch_para(vp);
   char buf[21] = { 0 };
   if (num == 0) {
-    uart_putc('0');
+    uart_put_syn('0');
     return;
   }
   while (num > 0) {
@@ -64,7 +58,7 @@ printuint(i8 ns, struct var_para* vp) // ns表示进制
     num /= ns;
   }
   while (i--)
-    uart_putc(buf[i]);
+    uart_put_syn(buf[i]);
 }
 
 static void
@@ -73,10 +67,10 @@ printint(i8 ns, struct var_para* vp)
   int i   = 0;
   i64 num = fetch_para(vp);
   if (num < 0)
-    uart_putc('-');
+    uart_put_syn('-');
   char buf[21] = { 0 };
   if (num == 0) {
-    uart_putc('0');
+    uart_put_syn('0');
     return;
   }
   num = num < 0 ? -num : num;
@@ -85,7 +79,7 @@ printint(i8 ns, struct var_para* vp)
     num /= ns;
   }
   while (i--)
-    uart_putc(buf[i]);
+    uart_put_syn(buf[i]);
 }
 
 void
@@ -118,7 +112,7 @@ print(const char* fmt, ...)
       }
       --fmt;
     }
-    uart_putc(*fmt);
+    uart_put_syn(*fmt);
     ++fmt;
   }
   release_spin(&pr);
@@ -155,10 +149,10 @@ panic(const char* fmt, ...)
       }
       --fmt;
     }
-    uart_putc(*fmt);
+    uart_put_syn(*fmt);
     ++fmt;
   }
-  uart_putc('\n');
+  uart_put_syn('\n');
   while (1)
     ;
 }
