@@ -6,5 +6,6 @@
 *.sym
 kernel/kernel
 fs.img
-
+mkfs/mkfs
+user/
 

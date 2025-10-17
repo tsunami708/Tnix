@@ -61,7 +61,10 @@ OBJS = \
 	$K/pt_reg.o \
 	$K/plic.o \
 
+
+
 $K/kernel: $(OBJS) $K/kernel.ld
+	g++ mkfs/mkfs.c -o mkfs/mkfs -I. -std=c++20
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS) 
 	$(OBJDUMP) -S $K/kernel > $K/kernel.asm
 	$(OBJDUMP) -t $K/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $K/kernel.sym
@@ -78,10 +81,10 @@ clean:
 	-name "*.log" -o -name "*.ind" -o -name "*.ilg" -o \
 	-name "*.o" -o -name "*.d" -o -name "*.asm" -o -name "*.sym" \
 	\) -exec rm -f {} +
-	rm -f $K/kernel *.dtb
+	rm -f $K/kernel *.dtb mkfs/mkfs
 
 
-qemu: $K/kernel 
+qemu: $K/kernel
 	$(QEMU) -machine virt $(QEMUOPTS)
 
 gdb: $K/kernel

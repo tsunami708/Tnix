@@ -10,8 +10,8 @@ BraceWrapping:
   AfterControlStatement: false  
   AfterCaseLabel: true 
 BreakBeforeBraces: Custom
-AlignConsecutiveAssignments: true
-AlignConsecutiveDeclarations: true
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
 AlignConsecutiveMacros: true
 AlignConsecutiveBitFields: true
 AlignOperands: true
