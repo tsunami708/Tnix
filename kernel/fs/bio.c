@@ -43,7 +43,6 @@ bget(u32 blockno)
     buf = bcache.bufs + i;
     if (!buf->valid) {
       ++buf->refc;
-      buf->valid = true;
       buf->blockno = blockno;
       release_spin(&bcache.lock);
       acquire_sleep(&buf->lock);
@@ -58,8 +57,10 @@ struct buf*
 bread(u32 blockno)
 {
   struct buf* buf = bget(blockno);
-  if (!buf->valid) // 数据未缓存
+  if (!buf->valid) { // 数据未缓存
     disk_read(buf);
+    buf->valid = true;
+  }
   return buf;
 }
 

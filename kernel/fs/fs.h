@@ -1,6 +1,5 @@
 #pragma once
 
-#define ROOTNO  0 // 根目录inode
 #define BSIZE   1024
 #define NDIRECT 12
 
@@ -16,9 +15,15 @@ struct buf {
   struct sleeplock lock;
   char data[BSIZE];
 };
+
+
+struct buf* bread(u32 blockno);
+void bwrite(struct buf* buf);
+void brelease(struct buf* buf);
+
 #else
 typedef unsigned int u32;
-typedef unsigned long long u64;
+typedef unsigned long u64;
 #endif
 
 

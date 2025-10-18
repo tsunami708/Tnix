@@ -390,6 +390,9 @@ void
 virtio_disk_intr()
 {
   acquire_spin(&disk.vdisk_lock);
+  /*
+    ! 如果目标线程正在因硬盘事件执行sleep,这条语句可以防止唤醒丢失,保证sleep操作的原子性
+  */
 
   // the device won't raise another interrupt until we tell it
   // we've seen this interrupt, which the following line does.
@@ -441,8 +444,10 @@ disk_write(struct buf* buf)
   virtio_disk_rw(buf, 1);
 }
 
+static int disk_int_cnt = 0;
 void
 do_disk_irq()
 {
+  ++disk_int_cnt;
   virtio_disk_intr();
 }

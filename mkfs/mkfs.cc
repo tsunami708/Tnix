@@ -153,10 +153,16 @@ main()
   printf("\033[0m\033[1;35m| bmap size:%luB\n \033[0m", sizeof(bmap));
   printf("\033[0m\033[1;35m| inodes size:%luB\n \033[0m", sizeof(dinodes));
   printf("\033[0m\033[1;35m| blocks size:%luB\n \033[0m", NBLOCK * BSIZE);
-  printf("\033[0m\033[1;35m| inode num:%lu\n \033[0m", NINODE);
-  printf("\033[0m\033[1;35m| block num:%lu\n \033[0m", NBLOCK);
   printf("\033[0m\033[1;35m| total size:%lfGB\n \033[0m",
          (double)(BSIZE * 3 + sizeof(bmap) + sizeof(imap) + sizeof(dinodes) + NBLOCK * BSIZE) / 1024 / 1024 / 1024);
+
+  printf("\033[0m\033[1;35m| inode num:%lu -- max_i:%lu\n \033[0m", NINODE, NINODE - 1);
+  printf("\033[0m\033[1;35m| block num:%lu -- max_b:%lu\n \033[0m", NBLOCK, NBLOCK + BLOCK_START - 1);
+  printf("\033[0m\033[1;35m| imap:2\n \033[0m");
+  printf("\033[0m\033[1;35m| inodes:%u\n \033[0m", sb.inodes);
+  printf("\033[0m\033[1;35m| bmap:%u\n \033[0m", sb.bmap);
+  printf("\033[0m\033[1;35m| blocks:%u\n \033[0m", sb.blocks);
+
   return 0;
 }
 
