@@ -4,7 +4,7 @@
 #include "sche.h"
 #include "printf.h"
 
-static bool
+bool
 holding_sleep(struct sleeplock* lock)
 {
   return lock->locked == true && lock->task == mytask();

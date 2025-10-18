@@ -430,13 +430,13 @@ init_disk()
 }
 
 void
-block_read(struct buf* buf)
+disk_read(struct buf* buf)
 {
   virtio_disk_rw(buf, 0);
 }
 
 void
-block_write(struct buf* buf)
+disk_write(struct buf* buf)
 {
   virtio_disk_rw(buf, 1);
 }

@@ -1,3 +1,6 @@
+#define MKFS
+
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -21,13 +24,13 @@ u32 copy(const char* dirpath, u32 pinode, bool root = false);
 ! zone size(block) , 1024B - per block
 boot: 1
 superblock: 1
-inode-bitmap: 1 (max file number: 8096)
-block-bitmap: 4 (max file blcok: 32932)
+inode-bitmap: 4 (max file number: 32384)
+block-bitmap: 64 (max file blcok: 524288)
 */
 
 
-#define NINODE (BSIZE * 8)
-#define NBLOCK (BSIZE * 32)
+#define NINODE (BSIZE * 32UL)
+#define NBLOCK (BSIZE * 1024UL)
 
 char imap[NINODE / 8]{};
 char bmap[NBLOCK / 8]{};
@@ -75,7 +78,7 @@ alloc_dinode()
   返回一个空闲block的块号,并将其在bmap中对应的比特位设置为1
 */
 static inline u64
-alloc_NBLOCK()
+alloc_block_num()
 {
   if (free_b >= NBLOCK - 1) {
     printf("block exhausted\n");
@@ -98,14 +101,14 @@ int fs_fd; // fs.img句柄
 int
 main()
 {
-  fs_fd = open("fs.img", O_CREAT | O_RDWR | O_TRUNC);
+  fs_fd = open("fs.img", O_CREAT | O_RDWR | O_TRUNC, 0666);
   if (fs_fd < 0) {
     perror("open fs.img fail:");
     return 1;
   }
 
   int r;
-  r = ftruncate(fs_fd, 1024 * 1024 * 1024LL); // 1GB的硬盘,可用空间小于1GB
+  r = ftruncate(fs_fd, 2 * 1024 * 1024 * 1024LL); // 2GB的硬盘,可用空间小于2GB
   if (r < 0) {
     perror("ftruncate fail:");
     return 1;
@@ -124,7 +127,7 @@ main()
     return 1;
   }
 
-  copy("../user", -1, true);
+  copy("user", -1, true);
 
   lseek(fs_fd, 2 * BSIZE, SEEK_SET);
   if (write(fs_fd, imap, sizeof(imap)) != sizeof(imap)) {
@@ -141,6 +144,19 @@ main()
   }
 
   close(fs_fd);
+
+  printf("\033[0m\033[1;35m| mkfs done\n \033[0m");
+  printf("\033[0m\033[1;35m| BSIZE:1024B\n \033[0m");
+  printf("\033[0m\033[1;35m| bootblock size:1024B\n \033[0m");
+  printf("\033[0m\033[1;35m| superblock size:1024B\n \033[0m");
+  printf("\033[0m\033[1;35m| imap size:1024B\n \033[0m");
+  printf("\033[0m\033[1;35m| bmap size:%luB\n \033[0m", sizeof(bmap));
+  printf("\033[0m\033[1;35m| inodes size:%luB\n \033[0m", sizeof(dinodes));
+  printf("\033[0m\033[1;35m| blocks size:%luB\n \033[0m", NBLOCK * BSIZE);
+  printf("\033[0m\033[1;35m| inode num:%lu\n \033[0m", NINODE);
+  printf("\033[0m\033[1;35m| block num:%lu\n \033[0m", NBLOCK);
+  printf("\033[0m\033[1;35m| total size:%lfGB\n \033[0m",
+         (double)(BSIZE * 3 + sizeof(bmap) + sizeof(imap) + sizeof(dinodes) + NBLOCK * BSIZE) / 1024 / 1024 / 1024);
   return 0;
 }
 
@@ -187,7 +203,7 @@ copy(const char* dirpath, u32 pinode, bool root)
       int i = 0;
       while ((n = read(fd, block, BSIZE)) > 0) {
         di->fsize += n;
-        di->iblock[i] = alloc_NBLOCK();
+        di->iblock[i] = alloc_block_num();
 
         lseek(fs_fd, di->iblock[i] * BSIZE, SEEK_SET);
         if (write(fs_fd, block, BSIZE) != BSIZE) {
@@ -210,7 +226,7 @@ copy(const char* dirpath, u32 pinode, bool root)
   struct dinode* di = alloc_dinode();
   di->type = DIRECTORY;
   di->fsize = BSIZE;
-  di->iblock[0] = alloc_NBLOCK();
+  di->iblock[0] = alloc_block_num();
 
   // i. 写入 . 项
   int i = 0;

@@ -35,9 +35,9 @@ ifndef CPUS
 CPUS := 4
 endif
 QEMUOPTS = -bios none -kernel $K/kernel -m 8096M -smp $(CPUS) -nographic 
-# QEMUOPTS += -global virtio-mmio.force-legacy=false
-# QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
-# QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+QEMUOPTS += -global virtio-mmio.force-legacy=false
+QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
+QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
 #构建目标文件
 K=kernel
@@ -52,6 +52,7 @@ OBJS = \
 	$K/task/systemd.o \
 	$K/dev/uart.o \
 	$K/dev/disk.o \
+	$K/fs/bio.o \
 	$K/spinlock.o \
 	$K/sleeplock.o \
 	$K/printf.o \
@@ -81,13 +82,16 @@ clean:
 	-name "*.log" -o -name "*.ind" -o -name "*.ilg" -o \
 	-name "*.o" -o -name "*.d" -o -name "*.asm" -o -name "*.sym" \
 	\) -exec rm -f {} +
-	rm -f $K/kernel *.dtb mkfs/mkfs
+	rm -f $K/kernel *.dtb mkfs/mkfs fs.img
 
 
-qemu: $K/kernel
+fs.img:
+	mkfs/mkfs
+
+qemu: $K/kernel fs.img
 	$(QEMU) -machine virt $(QEMUOPTS)
 
-gdb: $K/kernel
+gdb: $K/kernel fs.img
 	$(QEMU) -machine virt $(QEMUOPTS) -S -s
 
 dts: $K/kernel

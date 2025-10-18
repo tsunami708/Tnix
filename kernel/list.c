@@ -1,13 +1,14 @@
 #include "type.h"
 #include "list.h"
 
+// 尾插
 void
 insert_list(struct list_node* head, struct list_node* node)
 {
-  node->next       = head;
-  node->prev       = head->prev;
+  node->next = head;
+  node->prev = head->prev;
   head->prev->next = node;
-  head->prev       = node;
+  head->prev = node;
 }
 
 void

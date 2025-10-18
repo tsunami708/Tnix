@@ -1,10 +1,26 @@
 #pragma once
-typedef unsigned int u32;
-typedef unsigned long long u64;
 
 #define ROOTNO  0 // 根目录inode
 #define BSIZE   1024
-#define NDIRECT 3
+#define NDIRECT 12
+
+#ifndef MKFS
+#include "type.h"
+#include "sleeplock.h"
+
+struct buf {
+  bool valid; // 是否缓存硬盘块
+  bool disk;  // 是否正在被设备使用
+  u32 refc;
+  u32 blockno;
+  struct sleeplock lock;
+  char data[BSIZE];
+};
+#else
+typedef unsigned int u32;
+typedef unsigned long long u64;
+#endif
+
 
 enum ftype {
   UNUSE,
@@ -22,11 +38,6 @@ struct superblock {
   char name[8];
 };
 
-struct buf {
-  bool disk; // 是否正在被设备使用
-  u32 blockno;
-  char data[BSIZE];
-};
 
 struct dinode {
   enum ftype type;

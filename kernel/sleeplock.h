@@ -4,11 +4,12 @@
 struct task;
 
 struct sleeplock {
-  const char*  lname;
-  bool         locked;
+  char lname[16];
+  bool locked;
   struct task* task;
 };
 
+bool holding_sleep(struct sleeplock* lock);
 void acquire_sleep(struct sleeplock* lock);
 void release_sleep(struct sleeplock* lock);
 
