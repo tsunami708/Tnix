@@ -26,19 +26,18 @@ block-bitmap: 4 (max file blcok: 32932)
 */
 
 
-#define BLOCK_SIZE 1024
-#define DINODE_NUM 8192
-#define BLOCK_NUM  32768
+#define NINODE (BSIZE * 8)
+#define NBLOCK (BSIZE * 32)
 
-char imap[DINODE_NUM / 8]{};
-char bmap[BLOCK_NUM / 8]{};
-char block[BLOCK_SIZE]{};
+char imap[NINODE / 8]{};
+char bmap[NBLOCK / 8]{};
+char block[BSIZE]{};
 
-struct __attribute__((aligned(BLOCK_SIZE))) {
-  struct dinode dinodes[sizeof(struct dinode) * DINODE_NUM];
+struct __attribute__((aligned(BSIZE))) {
+  struct dinode dinodes[sizeof(struct dinode) * NINODE];
 } dinodes{};
 
-const u64 BLOCK_START = (3UL + sizeof(dinodes) / BLOCK_SIZE + sizeof(bmap) / BLOCK_SIZE);
+const u64 BLOCK_START = (3UL + sizeof(dinodes) / BSIZE + sizeof(bmap) / BSIZE);
 
 
 u32 free_i = 0; // imap中首个0的比特位索引
@@ -56,7 +55,7 @@ bit_to_inode(u32 idx)
 static inline struct dinode*
 alloc_dinode()
 {
-  if (free_i > DINODE_NUM - 1) {
+  if (free_i > NINODE - 1) {
     printf("dinode exhausted\n");
     exit(1);
   }
@@ -76,9 +75,9 @@ alloc_dinode()
   返回一个空闲block的块号,并将其在bmap中对应的比特位设置为1
 */
 static inline u64
-alloc_block_num()
+alloc_NBLOCK()
 {
-  if (free_b >= BLOCK_NUM - 1) {
+  if (free_b >= NBLOCK - 1) {
     printf("block exhausted\n");
     exit(1);
   }
@@ -113,12 +112,12 @@ main()
   }
 
   // 写入超级块
-  lseek(fs_fd, BLOCK_SIZE, SEEK_SET);
+  lseek(fs_fd, BSIZE, SEEK_SET);
   struct superblock sb = { .imap = 2, .inodes = 3, .name = "tsunami" };
-  sb.bmap = sb.inodes + sizeof(dinodes) / BLOCK_SIZE;
-  sb.blocks = sb.bmap + sizeof(bmap) / BLOCK_SIZE;
-  sb.max_inode = DINODE_NUM - 1;
-  sb.max_nblock = BLOCK_NUM + BLOCK_START - 1;
+  sb.bmap = sb.inodes + sizeof(dinodes) / BSIZE;
+  sb.blocks = sb.bmap + sizeof(bmap) / BSIZE;
+  sb.max_inode = NINODE - 1;
+  sb.max_nblock = NBLOCK + BLOCK_START - 1;
   r = write(fs_fd, &sb, sizeof(sb));
   if (r != sizeof(sb)) {
     perror("write superblock fail:");
@@ -127,7 +126,7 @@ main()
 
   copy("../user", -1, true);
 
-  lseek(fs_fd, 2 * BLOCK_SIZE, SEEK_SET);
+  lseek(fs_fd, 2 * BSIZE, SEEK_SET);
   if (write(fs_fd, imap, sizeof(imap)) != sizeof(imap)) {
     printf("write imap fail %s\n", err);
     return 1;
@@ -186,12 +185,12 @@ copy(const char* dirpath, u32 pinode, bool root)
       // fill block
       ssize_t n;
       int i = 0;
-      while ((n = read(fd, block, BLOCK_SIZE)) > 0) {
+      while ((n = read(fd, block, BSIZE)) > 0) {
         di->fsize += n;
-        di->iblock[i] = alloc_block_num();
+        di->iblock[i] = alloc_NBLOCK();
 
-        lseek(fs_fd, di->iblock[i] * BLOCK_SIZE, SEEK_SET);
-        if (write(fs_fd, block, BLOCK_SIZE) != BLOCK_SIZE) {
+        lseek(fs_fd, di->iblock[i] * BSIZE, SEEK_SET);
+        if (write(fs_fd, block, BSIZE) != BSIZE) {
           perror("write fs.img fail:");
           exit(1);
         }
@@ -207,11 +206,11 @@ copy(const char* dirpath, u32 pinode, bool root)
 
 
   // 2.处理.目录
-  char block[BLOCK_SIZE]{};
+  char block[BSIZE]{};
   struct dinode* di = alloc_dinode();
   di->type = DIRECTORY;
-  di->fsize = BLOCK_SIZE;
-  di->iblock[0] = alloc_block_num();
+  di->fsize = BSIZE;
+  di->iblock[0] = alloc_NBLOCK();
 
   // i. 写入 . 项
   int i = 0;
@@ -241,8 +240,8 @@ copy(const char* dirpath, u32 pinode, bool root)
     memcpy(block + i + 4, fname.c_str(), fname.length());
     i += 20;
   }
-  lseek(fs_fd, di->iblock[0] * BLOCK_SIZE, SEEK_SET);
-  if (write(fs_fd, block, BLOCK_SIZE) != BLOCK_SIZE) {
+  lseek(fs_fd, di->iblock[0] * BSIZE, SEEK_SET);
+  if (write(fs_fd, block, BSIZE) != BSIZE) {
     printf("write . dir fail: %s\n", err);
     exit(1);
   }

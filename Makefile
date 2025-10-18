@@ -18,7 +18,7 @@ CFLAGS += -fno-builtin-strchr -fno-builtin-exit -fno-builtin-malloc -fno-builtin
 CFLAGS += -fno-builtin-free
 CFLAGS += -fno-builtin-memcpy -Wno-main
 CFLAGS += -fno-builtin-printf -fno-builtin-fprintf -fno-builtin-vprintf
-CFLAGS += -Ikernel -Ikernel/boot -Ikernel/task -Ikernel/mem -Ikernel/dev
+CFLAGS += -Ikernel -Ikernel/boot -Ikernel/task -Ikernel/mem -Ikernel/dev -Ikernel/fs
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]no-pie'),)
 CFLAGS += -fno-pie -no-pie 
@@ -64,7 +64,7 @@ OBJS = \
 
 
 $K/kernel: $(OBJS) $K/kernel.ld
-	g++ mkfs/mkfs.c -o mkfs/mkfs -I. -std=c++20
+	g++ mkfs/mkfs.cc -o mkfs/mkfs -I. -std=c++20
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS) 
 	$(OBJDUMP) -S $K/kernel > $K/kernel.asm
 	$(OBJDUMP) -t $K/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $K/kernel.sym

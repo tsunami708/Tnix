@@ -1,23 +1,24 @@
 #pragma once
-#define bool  int
+#define NULL (void*)0
+
+typedef int bool;
 #define true  1
 #define false 0
-#define NULL  (void*)0
 
-#define i8  signed char
-#define i16 short
-#define i32 int
-#define i64 long long
+typedef signed char i8;
+typedef short i16;
+typedef int i32;
+typedef long long i64;
 
-#define u8  unsigned char
-#define u16 unsigned short
-#define u32 unsigned int
-#define u64 unsigned long long
+typedef unsigned char u8;
+typedef unsigned short u16;
+typedef unsigned int u32;
+typedef unsigned long long u64;
+
+typedef u64 pte_t;
+typedef pte_t* pagetable_t;
+
 
 #define align_down(x, align) ((x) & ~((align) - 1))
 #define align_up(x, align)   (((x) + (align) - 1) & ~((align) - 1))
-
-#define min(a, b) (a < b ? a : b)
-
-#define pte_t       u64
-#define pagetable_t pte_t* // 根页表
+#define min(a, b)            ((a) < (b) ? (a) : (b))
