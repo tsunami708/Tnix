@@ -25,5 +25,11 @@ struct list_node {
 /*静态定义一个链表头*/
 #define INIT_LIST(name) struct list_node name = { .next = &name, .prev = &name }
 
-void insert_list(struct list_node* head, struct list_node* node);
-void remove_from_list(struct list_node* node);
+static inline void
+list_init(struct list_node* head)
+{
+  head->next = head->prev = head;
+}
+void list_pushback(struct list_node* head, struct list_node* node);
+void list_pushfront(struct list_node* head, struct list_node* node);
+void list_remove(struct list_node* node);

@@ -4,7 +4,7 @@
 struct task;
 
 struct sleeplock {
-  char lname[16];
+  const char* lname;
   bool locked;
   struct task* task;
 };

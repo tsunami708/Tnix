@@ -5,7 +5,7 @@
 #include "string.h"
 #include "sche.h"
 #include "config.h"
-#include "fs.h"
+#include "bio.h"
 
 // virtio mmio control registers, mapped starting at 0x10001000.
 // from qemu virtio_mmio.h
@@ -134,7 +134,7 @@ static struct disk {
   // for use when completion interrupt arrives.
   // indexed by first descriptor index of chain.
   struct {
-    struct buf* b;
+    struct iobuf* b;
     char status;
   } info[NUM];
 
@@ -308,7 +308,7 @@ alloc3_desc(int* idx)
 }
 
 void
-virtio_disk_rw(struct buf* b, int write)
+virtio_disk_rw(struct iobuf* b, int write)
 {
   u64 sector = b->blockno * (BSIZE / 512);
 
@@ -359,7 +359,7 @@ virtio_disk_rw(struct buf* b, int write)
   disk.desc[idx[2]].flags = VRING_DESC_F_WRITE; // device writes the status
   disk.desc[idx[2]].next = 0;
 
-  // record struct buf for virtio_disk_intr().
+  // record struct iobuf for virtio_disk_intr().
   b->disk = 1;
   disk.info[idx[0]].b = b;
 
@@ -414,7 +414,7 @@ virtio_disk_intr()
     if (disk.info[id].status != 0)
       panic("virtio_disk_intr status");
 
-    struct buf* b = disk.info[id].b;
+    struct iobuf* b = disk.info[id].b;
     b->disk = 0; // disk is done with buf
     wakeup(b);
 
@@ -433,13 +433,13 @@ init_disk()
 }
 
 void
-disk_read(struct buf* buf)
+disk_read(struct iobuf* buf)
 {
   virtio_disk_rw(buf, 0);
 }
 
 void
-disk_write(struct buf* buf)
+disk_write(struct iobuf* buf)
 {
   virtio_disk_rw(buf, 1);
 }

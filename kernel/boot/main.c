@@ -8,7 +8,7 @@ extern void init_trap();
 extern void init_plic();
 extern void init_systemd();
 extern void init_uart();
-extern void init_buffer();
+extern void init_iobuf();
 extern void init_disk();
 extern void task_schedule();
 
@@ -22,7 +22,7 @@ main()
     init_page();    // 内核页表初始化
     init_trap();    // 陷阱处理初始化
     init_plic();    // 中断控制器初始化
-    init_buffer();  // IO缓冲区初始化
+    init_iobuf();   // IO缓冲区初始化
     init_disk();    // 硬盘初始化
     init_systemd(); // 启动1号用户任务
     __sync_synchronize();

@@ -5,22 +5,6 @@
 
 #ifndef MKFS
 #include "type.h"
-#include "sleeplock.h"
-
-struct buf {
-  bool valid; // 是否缓存硬盘块
-  bool disk;  // 是否正在被设备使用
-  u32 refc;
-  u32 blockno;
-  struct sleeplock lock;
-  char data[BSIZE];
-};
-
-
-struct buf* bread(u32 blockno);
-void bwrite(struct buf* buf);
-void brelease(struct buf* buf);
-
 #else
 typedef unsigned int u32;
 typedef unsigned long u64;

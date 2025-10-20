@@ -34,19 +34,19 @@ init_systemd()
   struct task* t = task_queue;
   struct page* kst = kalloc();
   t->kstack = pha(kst) + PGSIZE; // 为1号task分配内核栈
-  insert_list(&t->pages, &kst->page_node);
+  list_pushback(&t->pages, &kst->page_node);
 
   struct page* tf = kalloc();                        // 为1号task分配trapframe只读页
   ((struct trapframe*)pha(tf))->ksatp = kernel_satp; // 目前只保存一个内核satp值
-  insert_list(&t->pages, &tf->page_node);
+  list_pushback(&t->pages, &tf->page_node);
 
   struct page* ust = kalloc();
   t->ustack = USTACK + PGSIZE;
-  insert_list(&t->pages, &ust->page_node);
+  list_pushback(&t->pages, &ust->page_node);
 
   struct page* root_pgt = kalloc();
   t->pagetable = (pagetable_t)pha(root_pgt); // 为1号task分配根页表
-  insert_list(&t->pages, &root_pgt->page_node);
+  list_pushback(&t->pages, &root_pgt->page_node);
 
 
   // TRAMPOLINE页必须在内核和用户的页表中虚拟地址必须相同

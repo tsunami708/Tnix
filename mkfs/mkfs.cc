@@ -108,7 +108,7 @@ main()
   }
 
   int r;
-  r = ftruncate(fs_fd, 2 * 1024 * 1024 * 1024LL); // 2GB的硬盘,可用空间小于2GB
+  r = ftruncate(fs_fd, 1024 * 1024 * 1024 * 1.5);
   if (r < 0) {
     perror("ftruncate fail:");
     return 1;

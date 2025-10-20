@@ -4,7 +4,7 @@
 struct cpu;
 
 struct spinlock {
-  char lname[16];
+  const char* lname;
   bool locked;
   struct cpu* cpu;
 };

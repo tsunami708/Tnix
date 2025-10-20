@@ -1,9 +1,8 @@
 #include "type.h"
 #include "list.h"
 
-// 尾插
 void
-insert_list(struct list_node* head, struct list_node* node)
+list_pushback(struct list_node* head, struct list_node* node)
 {
   node->next = head;
   node->prev = head->prev;
@@ -12,7 +11,16 @@ insert_list(struct list_node* head, struct list_node* node)
 }
 
 void
-remove_from_list(struct list_node* node)
+list_pushfront(struct list_node* head, struct list_node* node)
+{
+  node->prev = head;
+  node->next = head->next;
+  head->next->prev = node;
+  head->next = node;
+}
+
+void
+list_remove(struct list_node* node)
 {
   node->prev->next = node->next;
   node->next->prev = node->prev;

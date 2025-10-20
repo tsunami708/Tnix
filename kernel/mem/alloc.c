@@ -4,7 +4,7 @@
 #include "spinlock.h"
 #include "string.h"
 #define page_num(addr) (addr - PHY_MEMORY) / PGSIZE
-extern char        end[]; // kernel.ld提供的内核静态数据区结束地址
+extern char end[]; // kernel.ld提供的内核静态数据区结束地址
 static struct page phy_mem[PHY_SIZE / PGSIZE];
 
 INIT_SPINLOCK(mem_spin);
@@ -21,7 +21,7 @@ init_memory()
       p->inuse = true; // 这一部分被内核永久保留使用
     } else {
       p->inuse = false;
-      insert_list(&pages_head, &p->page_node);
+      list_pushback(&pages_head, &p->page_node);
     }
   }
 }
@@ -35,7 +35,7 @@ kalloc()
   struct page* p = container_of(pages_head.next, struct page, page_node);
 
   p->inuse = true;
-  remove_from_list(pages_head.next);
+  list_remove(pages_head.next);
   release_spin(&mem_spin);
   memset((void*)p->paddr, 0, PGSIZE);
   return p;
@@ -48,6 +48,6 @@ kfree(struct page* p)
   if (!p->inuse)
     panic("double free page");
   p->inuse = false;
-  insert_list(&pages_head, &p->page_node);
+  list_pushback(&pages_head, &p->page_node);
   release_spin(&mem_spin);
 }
