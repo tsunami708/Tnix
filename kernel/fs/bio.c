@@ -4,7 +4,7 @@
 #include "driver.h"
 #include "printf.h"
 
-#define NIOBUF 12
+#define NIOBUF 16
 
 /*
   静态申请一块连续的struct iobuf
@@ -100,7 +100,7 @@ release_iobuf(struct iobuf* buf)
 }
 
 void
-init_iobuf()
+init_bcache()
 {
   list_init(&iobuf_bcache.head);
   iobuf_bcache.lock.lname = "iobuf_bcache";

@@ -121,6 +121,7 @@ main()
   sb.blocks = sb.bmap + sizeof(bmap) / BSIZE;
   sb.max_inode = NINODE - 1;
   sb.max_nblock = NBLOCK + BLOCK_START - 1;
+  sb.dev = ROOTDEV;
   r = write(fs_fd, &sb, sizeof(sb));
   if (r != sizeof(sb)) {
     perror("write superblock fail:");

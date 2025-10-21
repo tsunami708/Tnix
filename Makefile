@@ -54,6 +54,7 @@ OBJS = \
 	$K/dev/disk.o \
 	$K/fs/bio.o \
 	$K/fs/fs.o \
+	$K/fs/inode.o \
 	$K/spinlock.o \
 	$K/sleeplock.o \
 	$K/printf.o \
