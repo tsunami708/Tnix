@@ -1,6 +1,5 @@
 #define MKFS
 
-
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -17,28 +16,29 @@
 #include <vector>
 using fimap = std::unordered_map<std::string, u32>; //<filename,inode_num>
 using child_dir = std::vector<std::string>;
+using std::pair;
 
 u32 copy(const char* dirpath, u32 pinode, bool root = false);
 
 /*
-[boot] [superblock] [inode-bitmap] [inodes] [block-bitmap] [blocks]
-! zone size(block) , 1024B - per block
-boot: 1
-superblock: 1
-inode-bitmap: 4 (max file number: 32384)
-block-bitmap: 64 (max file blcok: 524288)
+desc: [boot] [superblock] [inode-bitmap] [inodes] [block-bitmap] [blocks]
+* zone size(block) , 1024B - per block
+* boot: 1
+* superblock: 1
+* inode-bitmap: 4 (max file number: 32384)
+* block-bitmap: 64 (max file blcok: 524288)
 */
 
 
-#define NINODE (BSIZE * 32UL)
-#define NBLOCK (BSIZE * 1024UL)
+#define NDINODE (BSIZE * 32UL)
+#define NBLOCK  (BSIZE * 1024UL)
 
-char imap[NINODE / 8]{};
+char imap[NDINODE / 8]{};
 char bmap[NBLOCK / 8]{};
 char block[BSIZE]{};
 
 struct __attribute__((aligned(BSIZE))) {
-  struct dinode dinodes[sizeof(struct dinode) * NINODE];
+  struct dinode dinodes[sizeof(struct dinode) * NDINODE];
 } dinodes{};
 
 const u64 BLOCK_START = (3UL + sizeof(dinodes) / BSIZE + sizeof(bmap) / BSIZE);
@@ -53,13 +53,12 @@ bit_to_inode(u32 idx)
   return (struct dinode*)&dinodes + idx;
 }
 
-/*
-  返回一个空闲的dinode节点,并将其在imap中对应的比特位设置为1且对inum字段进行赋值
-*/
-static inline struct dinode*
+
+// desc: 返回一个空闲的dinode节点和其inode编号,并将其在imap中对应的比特位设置为1
+static inline pair<struct dinode*, u32>
 alloc_dinode()
 {
-  if (free_i > NINODE - 1) {
+  if (free_i > NDINODE - 1) {
     printf("dinode exhausted\n");
     exit(1);
   }
@@ -71,8 +70,7 @@ alloc_dinode()
   *addr |= 1 << bit;
 
   struct dinode* r = bit_to_inode(free_i);
-  r->inum = free_i++;
-  return r;
+  return { r, free_i++ };
 }
 
 /*
@@ -120,7 +118,7 @@ main()
   struct superblock sb = { .imap = 2, .inodes = 3, .name = "tsunami" };
   sb.bmap = sb.inodes + sizeof(dinodes) / BSIZE;
   sb.blocks = sb.bmap + sizeof(bmap) / BSIZE;
-  sb.max_inode = NINODE - 1;
+  sb.max_inode = NDINODE - 1;
   sb.max_nblock = NBLOCK + BLOCK_START - 1;
   sb.dev = ROOTDEV;
   r = write(fs_fd, &sb, sizeof(sb));
@@ -158,7 +156,7 @@ main()
   printf("\033[0m\033[1;35m| total size:%lfGB\n \033[0m",
          (double)(BSIZE * 3 + sizeof(bmap) + sizeof(imap) + sizeof(dinodes) + NBLOCK * BSIZE) / 1024 / 1024 / 1024);
 
-  printf("\033[0m\033[1;35m| inode num:%lu -- max_i:%lu\n \033[0m", NINODE, NINODE - 1);
+  printf("\033[0m\033[1;35m| inode num:%lu -- max_i:%lu\n \033[0m", NDINODE, NDINODE - 1);
   printf("\033[0m\033[1;35m| block num:%lu -- max_b:%lu\n \033[0m", NBLOCK, NBLOCK + BLOCK_START - 1);
   printf("\033[0m\033[1;35m| imap:2\n \033[0m");
   printf("\033[0m\033[1;35m| inodes:%u\n \033[0m", sb.inodes);
@@ -200,13 +198,11 @@ copy(const char* dirpath, u32 pinode, bool root)
         exit(1);
       }
 
-      // fill dinode
-      struct dinode* di = alloc_dinode();
+
+      auto [di, inum] = alloc_dinode();
       di->type = REGULAR;
+      maps[entry->d_name] = inum;
 
-      maps[entry->d_name] = di->inum;
-
-      // fill block
       ssize_t n;
       int i = 0;
       while ((n = read(fd, block, BSIZE)) > 0) {
@@ -231,42 +227,42 @@ copy(const char* dirpath, u32 pinode, bool root)
 
   // 2.处理.目录
   char block[BSIZE]{};
-  struct dinode* di = alloc_dinode();
+  auto [di, inum] = alloc_dinode();
   di->type = DIRECTORY;
   di->fsize = BSIZE;
   di->iblock[0] = alloc_block_num();
 
   // i. 写入 . 项
   int i = 0;
-  memset(block + i, '\0', DLENGTH);
-  memcpy(block + i, &di->inum, 4);
+  memset(block + i, '\0', sizeof(struct dentry));
+  memcpy(block + i, &inum, 4);
   memcpy(block + i + 4, ".", 1);
-  i += 20;
+  i += sizeof(struct dentry);
 
   // ii. 写入 .. 项
-  memset(block + i, '\0', DLENGTH);
+  memset(block + i, '\0', sizeof(struct dentry));
   if (root)
-    memcpy(block + i, &di->inum, 4);
+    memcpy(block + i, &inum, 4);
   else
     memcpy(block + i, &pinode, 4);
   memcpy(block + i + 4, "..", 2);
-  i += 20;
+  i += sizeof(struct dentry);
 
   // iii. 写入子目录目录项
   for (auto& cd : cds) {
-    u32 cinode = copy(cd.c_str(), di->inum);
-    memset(block + i, '\0', DLENGTH);
+    u32 cinode = copy(cd.c_str(), inum);
+    memset(block + i, '\0', sizeof(struct dentry));
     memcpy(block + i, &cinode, 4);
     memcpy(block + i + 4, cd.c_str(), cd.length());
-    i += 20;
+    i += sizeof(struct dentry);
   }
 
   // vi. 写入普通目录项
   for (auto& [fname, inode] : maps) {
-    memset(block + i, '\0', DLENGTH);
+    memset(block + i, '\0', sizeof(struct dentry));
     memcpy(block + i, &inode, 4);
     memcpy(block + i + 4, fname.c_str(), fname.length());
-    i += 20;
+    i += sizeof(struct dentry);
   }
   lseek(fs_fd, di->iblock[0] * BSIZE, SEEK_SET);
   if (write(fs_fd, block, BSIZE) != BSIZE) {
@@ -274,7 +270,7 @@ copy(const char* dirpath, u32 pinode, bool root)
     exit(1);
   }
   closedir(dir);
-  return di->inum;
+  return inum;
 }
 
 /*

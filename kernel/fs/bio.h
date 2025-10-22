@@ -6,12 +6,12 @@
 #define BSIZE 1024
 
 struct iobuf {
-  char data[BSIZE];      //! 至多一个线程访问数据块
-  struct sleeplock lock; // !仅保护data
+  char data[BSIZE];      // note: 至多一个线程访问数据块
+  struct sleeplock lock; // note:仅保护data
 
   struct list_node bcache_node;
 
-  bool valid; // 是否已缓存硬盘块
+  bool valid; // 是否已缓存dev设备上块号blockno块数据
   bool disk;  // 是否正在被设备使用
 
   dev_t dev;

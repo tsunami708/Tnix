@@ -1,8 +1,9 @@
 #pragma once
 
-#define BSIZE   1024
-#define NDIRECT 12
-#define ROOTDEV 0
+#define BSIZE    1024
+#define NDIRECT  12
+#define ROOTDEV  0
+#define ROOTINUM 0
 
 #ifndef MKFS
 #include "type.h"
@@ -30,7 +31,11 @@ enum ftype {
 };
 
 struct superblock {
+#ifndef MKFS
   dev_t dev;
+#else
+  u32 dev; // 避免与sys/types.h冲突
+#endif
   u32 imap;
   u32 inodes;
   u32 bmap;
@@ -45,7 +50,6 @@ struct dinode {
   enum ftype type;
 
   u32 nlink;
-  u32 inum;
   u32 fsize;
   u32 iblock[NDIRECT];
 };
