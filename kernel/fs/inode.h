@@ -4,7 +4,9 @@
 #include "sleeplock.h"
 
 struct inode {
-  struct sleeplock lock; // 保护di
+  u32 inum;
+
+  struct sleeplock lock; // note: 仅保护di,其余字段由inode_icache的自旋锁保护
   struct dinode di;
   /*
    *  enum ftype type;
@@ -24,3 +26,7 @@ void free_inode(struct inode* inode);
 
 struct inode* get_inode(struct superblock* sb, u32 inum);
 void put_inode(struct inode* inode);
+
+void read_dinode(struct inode* inode);
+void write_dinode(struct inode* inode);
+bool check_dinode(struct inode* inode);
