@@ -1,7 +1,11 @@
 #pragma once
-#include "type.h"
 
+#ifndef MKFS
+#include "type.h"
+#endif
+
+#define DLENGTH 16
 struct dentry {
   u32 ium;
-  char name[16];
+  char name[DLENGTH] __attribute__((nonstring));
 };

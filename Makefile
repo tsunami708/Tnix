@@ -67,7 +67,6 @@ OBJS = \
 
 
 $K/kernel: $(OBJS) $K/kernel.ld
-	g++ mkfs/mkfs.cc -o mkfs/mkfs -I. -std=c++20
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS) 
 	$(OBJDUMP) -S $K/kernel > $K/kernel.asm
 	$(OBJDUMP) -t $K/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $K/kernel.sym
@@ -88,6 +87,7 @@ clean:
 
 
 fs.img:
+	g++ mkfs/mkfs.cc -o mkfs/mkfs -I. -std=c++20
 	mkfs/mkfs
 
 qemu: $K/kernel fs.img

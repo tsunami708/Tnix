@@ -10,6 +10,7 @@
 #include <fcntl.h>
 
 #include "kernel/fs/fs.h"
+#include "kernel/fs/dir.h"
 
 #include <unordered_map>
 #include <string>
@@ -237,21 +238,24 @@ copy(const char* dirpath, u32 pinode, bool root)
 
   // i. 写入 . 项
   int i = 0;
+  memset(block + i, '\0', DLENGTH);
   memcpy(block + i, &di->inum, 4);
-  memcpy(block + i + 4, ".", 2);
+  memcpy(block + i + 4, ".", 1);
   i += 20;
 
   // ii. 写入 .. 项
+  memset(block + i, '\0', DLENGTH);
   if (root)
     memcpy(block + i, &di->inum, 4);
   else
     memcpy(block + i, &pinode, 4);
-  memcpy(block + i + 4, "..", 3);
+  memcpy(block + i + 4, "..", 2);
   i += 20;
 
   // iii. 写入子目录目录项
   for (auto& cd : cds) {
     u32 cinode = copy(cd.c_str(), di->inum);
+    memset(block + i, '\0', DLENGTH);
     memcpy(block + i, &cinode, 4);
     memcpy(block + i + 4, cd.c_str(), cd.length());
     i += 20;
@@ -259,6 +263,7 @@ copy(const char* dirpath, u32 pinode, bool root)
 
   // vi. 写入普通目录项
   for (auto& [fname, inode] : maps) {
+    memset(block + i, '\0', DLENGTH);
     memcpy(block + i, &inode, 4);
     memcpy(block + i + 4, fname.c_str(), fname.length());
     i += 20;

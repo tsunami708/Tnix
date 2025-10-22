@@ -3,34 +3,20 @@ void*
 memset(void* dst, int c, u32 n)
 {
   char* cdst = (char*)dst;
-  int   i;
+  int i;
   for (i = 0; i < n; i++) {
     cdst[i] = c;
   }
   return dst;
 }
 
-int
-memcmp(const void* v1, const void* v2, u32 n)
-{
-  const u8 *s1, *s2;
 
-  s1 = v1;
-  s2 = v2;
-  while (n-- > 0) {
-    if (*s1 != *s2)
-      return *s1 - *s2;
-    s1++, s2++;
-  }
 
-  return 0;
-}
-
-void*
+static void*
 memmove(void* dst, const void* src, u32 n)
 {
   const char* s;
-  char*       d;
+  char* d;
 
   if (n == 0)
     return dst;
@@ -78,20 +64,6 @@ strncpy(char* s, const char* t, int n)
   return os;
 }
 
-// Like strncpy but guaranteed to NUL-terminate.
-char*
-safestrcpy(char* s, const char* t, int n)
-{
-  char* os;
-
-  os = s;
-  if (n <= 0)
-    return os;
-  while (--n > 0 && (*s++ = *t++) != 0)
-    ;
-  *s = 0;
-  return os;
-}
 
 int
 strlen(const char* s)
