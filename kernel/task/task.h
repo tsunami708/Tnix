@@ -4,6 +4,8 @@
 #include "spinlock.h"
 #include "cpu.h"
 
+struct inode;
+
 enum task_state {
   INIT,
   READY,
@@ -32,7 +34,8 @@ struct task {
 
   enum task_state state;
   struct spinlock lock;
-  struct context  ctx;
+  struct context ctx;
+  struct inode* cwd;
 
   struct list_node pages;
 

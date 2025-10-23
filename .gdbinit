@@ -1,3 +1,11 @@
+define ls
+  layout src
+end
+
+define la
+  layout asm
+end
+
 set confirm off
 set architecture riscv:rv64
 target remote 127.0.0.1:1234

@@ -2,11 +2,10 @@
 
 #include "fs.h"
 #include "sleeplock.h"
+#include "spinlock.h"
 
 struct inode {
-  u32 inum;
-
-  struct sleeplock lock; // note: 仅保护di,其余字段由inode_icache的自旋锁保护
+  struct sleeplock lock; // note: 仅保护di
   struct dinode di;
   /*
    *  enum ftype type;
@@ -16,7 +15,9 @@ struct inode {
    *  u32 iblock[NDIRECT];
    */
 
+  struct spinlock spin;
   struct superblock* sb;
+  u32 inum;
   bool valid;
   u32 refc;
 };
@@ -25,6 +26,7 @@ u32 alloc_inode(struct superblock* sb);
 void free_inode(struct inode* inode);
 
 struct inode* get_inode(struct superblock* sb, u32 inum);
+struct inode* do_get_inode(struct superblock* sb, u32 inum);
 void put_inode(struct inode* inode);
 
 void read_dinode(struct inode* inode);

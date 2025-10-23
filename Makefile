@@ -55,6 +55,7 @@ OBJS = \
 	$K/fs/bio.o \
 	$K/fs/fs.o \
 	$K/fs/inode.o \
+	$K/fs/dir.o \
 	$K/spinlock.o \
 	$K/sleeplock.o \
 	$K/printf.o \
@@ -87,8 +88,8 @@ clean:
 
 
 fs.img:
-	g++ mkfs/mkfs.cc -o mkfs/mkfs -I. -std=c++20
-	mkfs/mkfs
+	g++ mkfs/mkfs.cc -o mkfs/mkfs -I. -std=c++17 -g
+	mkfs/mkfs user
 
 qemu: $K/kernel fs.img
 	$(QEMU) -machine virt $(QEMUOPTS)

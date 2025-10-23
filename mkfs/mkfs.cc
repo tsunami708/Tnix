@@ -28,7 +28,9 @@ desc: [boot] [superblock] [inode-bitmap] [inodes] [block-bitmap] [blocks]
 * inode-bitmap: 4 (max file number: 32384)
 * block-bitmap: 64 (max file blcok: 524288)
 */
-
+#define IMAP_START   2
+#define IMAP_SIZE    4
+#define INODES_START (IMAP_SIZE + IMAP_START)
 
 #define NDINODE (BSIZE * 32UL)
 #define NBLOCK  (BSIZE * 1024UL)
@@ -41,10 +43,10 @@ struct __attribute__((aligned(BSIZE))) {
   struct dinode dinodes[sizeof(struct dinode) * NDINODE];
 } dinodes{};
 
-const u64 BLOCK_START = (3UL + sizeof(dinodes) / BSIZE + sizeof(bmap) / BSIZE);
+const u64 BLOCK_START = (2UL + IMAP_SIZE + sizeof(dinodes) / BSIZE + sizeof(bmap) / BSIZE);
 
 
-u32 free_i = 0; // imap中首个0的比特位索引
+u32 free_i = 1; // imap中首个0的比特位索引  inum==0保留给根目录
 u32 free_b = 0; // bmap中首个0的比特位索引
 
 static inline struct dinode*
@@ -98,8 +100,14 @@ int fs_fd; // fs.img句柄
 #define err strerror(errno)
 
 int
-main()
+main(int argc, char* argv[])
 {
+  if (argc != 2) {
+    printf("usage error\n");
+    return 1;
+  }
+  const char* rdir = argv[1];
+
   fs_fd = open("fs.img", O_CREAT | O_RDWR | O_TRUNC, 0666);
   if (fs_fd < 0) {
     perror("open fs.img fail:");
@@ -115,7 +123,7 @@ main()
 
   // 写入超级块
   lseek(fs_fd, BSIZE, SEEK_SET);
-  struct superblock sb = { .imap = 2, .inodes = 3, .name = "tsunami" };
+  struct superblock sb = { .imap = IMAP_START, .inodes = INODES_START, .name = "tsunami" };
   sb.bmap = sb.inodes + sizeof(dinodes) / BSIZE;
   sb.blocks = sb.bmap + sizeof(bmap) / BSIZE;
   sb.max_inode = NDINODE - 1;
@@ -127,7 +135,7 @@ main()
     return 1;
   }
 
-  copy("user", -1, true);
+  copy(rdir, -1, true);
 
   lseek(fs_fd, 2 * BSIZE, SEEK_SET);
   if (write(fs_fd, imap, sizeof(imap)) != sizeof(imap)) {
@@ -149,7 +157,7 @@ main()
   printf("\033[0m\033[1;35m| BSIZE:1024B\n \033[0m");
   printf("\033[0m\033[1;35m| bootblock size:1024B\n \033[0m");
   printf("\033[0m\033[1;35m| superblock size:1024B\n \033[0m");
-  printf("\033[0m\033[1;35m| imap size:1024B\n \033[0m");
+  printf("\033[0m\033[1;35m| imap size:%uB\n \033[0m", BSIZE * IMAP_SIZE);
   printf("\033[0m\033[1;35m| bmap size:%luB\n \033[0m", sizeof(bmap));
   printf("\033[0m\033[1;35m| inodes size:%luB\n \033[0m", sizeof(dinodes));
   printf("\033[0m\033[1;35m| blocks size:%luB\n \033[0m", NBLOCK * BSIZE);
@@ -158,7 +166,7 @@ main()
 
   printf("\033[0m\033[1;35m| inode num:%lu -- max_i:%lu\n \033[0m", NDINODE, NDINODE - 1);
   printf("\033[0m\033[1;35m| block num:%lu -- max_b:%lu\n \033[0m", NBLOCK, NBLOCK + BLOCK_START - 1);
-  printf("\033[0m\033[1;35m| imap:2\n \033[0m");
+  printf("\033[0m\033[1;35m| imap:%u\n \033[0m", IMAP_START);
   printf("\033[0m\033[1;35m| inodes:%u\n \033[0m", sb.inodes);
   printf("\033[0m\033[1;35m| bmap:%u\n \033[0m", sb.bmap);
   printf("\033[0m\033[1;35m| blocks:%u\n \033[0m", sb.blocks);
@@ -227,7 +235,16 @@ copy(const char* dirpath, u32 pinode, bool root)
 
   // 2.处理.目录
   char block[BSIZE]{};
-  auto [di, inum] = alloc_dinode();
+  struct dinode* di;
+  u32 inum;
+  if (root) {
+    inum = 0;
+    di = &dinodes.dinodes[0];
+    imap[0] |= 1;
+  } else {
+    auto [x, y] = alloc_dinode();
+    di = x, inum = y;
+  }
   di->type = DIRECTORY;
   di->fsize = BSIZE;
   di->iblock[0] = alloc_block_num();
@@ -270,6 +287,8 @@ copy(const char* dirpath, u32 pinode, bool root)
     exit(1);
   }
   closedir(dir);
+
+  chdir("..");
   return inum;
 }
 

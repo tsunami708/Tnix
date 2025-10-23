@@ -3,6 +3,10 @@
 #include "cpu.h"
 #include "printf.h"
 
+
+#include "dir.h" //test
+#include "inode.h"
+
 extern struct task task_queue[NPROC];
 
 extern char trampoline[];
@@ -23,6 +27,8 @@ first_sched()
     first = false;
     __sync_synchronize();
     fsinit();
+    struct inode* i = lookup_dentry("tdir/eee/eqw"); // test
+    print("我找到了inode号%d 引用计数%d 有效吗%d ", i->inum, i->refc, i->valid);
   }
 
 

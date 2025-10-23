@@ -38,17 +38,19 @@ imap_offset_of_inode(struct inode* inode)
   return inode->inum % BPB;
 }
 
-// desc: 检查inode是否存在于磁盘
+// desc: 检查inode是否存在于磁盘(文件是否存在)
 bool
 check_dinode(struct inode* inode)
 {
   struct iobuf* buf = read_iobuf(inode->sb->dev, imap_blockno_of_inode(inode));
   u32 k = imap_offset_of_inode(inode);
   u64* section = (u64*)buf->data + k / 8;
+  release_iobuf(buf);
   return (*section) & (1UL << (k % 8));
 }
 
-// note: 确保线程持有inode的阻塞锁和inode存在于磁盘
+// desc: 从磁盘读取文件的属性信息
+// note: 请确保线程持有inode的阻塞锁和inode存在于磁盘
 void
 read_dinode(struct inode* inode)
 {
@@ -64,7 +66,8 @@ read_dinode(struct inode* inode)
   release_iobuf(buf);
 }
 
-// note: 确保线程持有inode的阻塞锁
+// desc: 更新文件属性到磁盘
+//  note: 请确保线程持有inode的阻塞锁和inode存在于磁盘
 void
 write_dinode(struct inode* inode)
 {
@@ -80,7 +83,7 @@ write_dinode(struct inode* inode)
   release_iobuf(buf);
 }
 
-// desc: 申请一个inumber,获取imap首个0比特位;等价于创建一个文件
+// desc: 申请一个inumber,获取imap首个0比特位(创建一个文件)
 u32
 alloc_inode(struct superblock* sb)
 {
@@ -121,7 +124,7 @@ alloc_inode(struct superblock* sb)
   panic("dinode exhausted");
 }
 
-// desc: 用久性删除inode;等价于删除一个文件
+// desc: 永久性删除inode(删除一个文件)
 void
 free_inode(struct inode* inode)
 {
@@ -136,6 +139,11 @@ free_inode(struct inode* inode)
   release_iobuf(buf);
 }
 
+/*
+  desc: 从inode_icache数组中申请一个空闲的inode结构,
+    * 如果返回inode的valid字段为真,则表示其他线程已引用此文件或之前的数据未被覆盖,属性信息已存在于内存
+    * 否则表示当前线程是引用此文件的第一个线程,需要自行决定是否读取属性信息
+*/
 struct inode*
 get_inode(struct superblock* sb, u32 inum)
 {
@@ -143,35 +151,62 @@ get_inode(struct superblock* sb, u32 inum)
 
   // fast path
   for (int i = 0; i < NINODE; ++i) {
+    acquire_spin(&inode_icache.inodes[i].spin);
     if (inode_icache.inodes[i].sb == sb && inode_icache.inodes[i].inum == inum) {
       ++inode_icache.inodes[i].refc;
-      release_spin(&inode_icache.lock); //* 不需要获取阻塞锁
+      release_spin(&inode_icache.inodes[i].spin);
+      release_spin(&inode_icache.lock);
       return inode_icache.inodes + i;
     }
+    release_spin(&inode_icache.inodes[i].spin);
   }
 
   // slow path
   for (int i = 0; i < NINODE; ++i) {
+    acquire_spin(&inode_icache.inodes[i].spin);
     if (inode_icache.inodes[i].refc == 0) {
       inode_icache.inodes[i].refc = 1;
       inode_icache.inodes[i].sb = sb;
+      inode_icache.inodes[i].inum = inum;
       inode_icache.inodes[i].valid = false;
+      release_spin(&inode_icache.inodes[i].spin);
       release_spin(&inode_icache.lock);
       return inode_icache.inodes + i;
     }
+    release_spin(&inode_icache.inodes[i].spin);
   }
 
   panic("icache exhausted");
 }
 
+// desc: 线程不再引用某个文件时,执行此方法减少引用计数
 void
 put_inode(struct inode* inode)
 {
-  acquire_spin(&inode_icache.lock);
+  acquire_spin(&inode->spin);
   --inode->refc;
-  if (inode->refc == 0)
-    inode->valid = false;
-  release_spin(&inode_icache.lock);
+  release_spin(&inode->spin);
+}
+
+// desc: 如果get_inode返回的是无磁盘数据的inode,则立刻读盘
+struct inode*
+do_get_inode(struct superblock* sb, u32 inum)
+{
+  struct inode* inode = get_inode(sb, inum);
+  acquire_spin(&inode->spin);
+  if (!inode->valid) {
+    release_spin(&inode->spin);
+    if (check_dinode(inode)) {
+      acquire_sleep(&inode->lock);
+      inode->valid = true;
+      read_dinode(inode);
+      release_sleep(&inode->lock);
+      return inode;
+    } else
+      return NULL;
+  }
+  release_spin(&inode->spin);
+  return inode;
 }
 
 
@@ -179,6 +214,8 @@ void
 init_icache()
 {
   inode_icache.lock.lname = "inode_icache";
-  for (int i = 0; i < NINODE; ++i)
-    inode_icache.inodes[i].lock.lname = "inode";
+  for (int i = 0; i < NINODE; ++i) {
+    inode_icache.inodes[i].lock.lname = "inode-sleep";
+    inode_icache.inodes[i].spin.lname = "inode-spin";
+  }
 }
