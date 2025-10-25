@@ -30,6 +30,7 @@ struct task {
 
 
   u16 pid, tid;
+  struct task* parent;
 
   void* chan;
 
