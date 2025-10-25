@@ -3,6 +3,7 @@
 #include "list.h"
 #include "spinlock.h"
 #include "cpu.h"
+#include "file.h"
 
 struct inode;
 
@@ -31,6 +32,11 @@ struct task {
   u16 pid, tid;
 
   void* chan;
+
+  struct {
+    struct file f[NFILE];
+    u8 i;
+  } files;
 
   enum task_state state;
   struct spinlock lock;

@@ -56,6 +56,7 @@ OBJS = \
 	$K/fs/fs.o \
 	$K/fs/inode.o \
 	$K/fs/dir.o \
+	$K/fs/file.o \
 	$K/spinlock.o \
 	$K/sleeplock.o \
 	$K/printf.o \
