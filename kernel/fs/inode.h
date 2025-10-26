@@ -1,8 +1,8 @@
 #pragma once
 
-#include "fs.h"
-#include "sleeplock.h"
-#include "spinlock.h"
+#include "fs/fs.h"
+#include "util/sleeplock.h"
+#include "util/spinlock.h"
 
 struct inode {
   struct sleeplock lock; // note: 仅保护di

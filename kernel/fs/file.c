@@ -1,6 +1,6 @@
-#include "file.h"
-#include "spinlock.h"
-#include "printf.h"
+#include "fs/file.h"
+#include "util/spinlock.h"
+#include "util/printf.h"
 
 #define MFILES 50
 static struct {

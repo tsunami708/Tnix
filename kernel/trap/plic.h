@@ -13,9 +13,10 @@
   The register to send interrupt completion message to the associated gateway.
 */
 #pragma once
-#include "type.h"
 #include "config.h"
-#include "cpu.h"
+
+#include "util/types.h"
+#include "task/cpu.h"
 
 #define PLIC_BASE PLIC
 
@@ -86,7 +87,7 @@ static inline void
 set_plic_my_enable(u32 irq, bool enable)
 {
   u32 index = irq / 32;
-  u32 bit   = irq % 32;
+  u32 bit = irq % 32;
 
   volatile u32* reg = (PLIC_ENABLE(cpuid()) + index * 4);
   if (enable)

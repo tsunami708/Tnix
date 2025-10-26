@@ -1,21 +1,21 @@
-#include "cpu.h"
+#include "task/cpu.h"
 
 volatile bool cpu_ok = false;
 
-extern void init_memory();
-extern void init_page();
-extern void init_trap();
-extern void init_plic();
-extern void init_systemd();
-extern void init_uart();
-extern void init_bcache();
-extern void init_icache();
-extern void init_disk();
-extern void task_schedule();
+extern void init_memory(void);
+extern void init_page(void);
+extern void init_trap(void);
+extern void init_plic(void);
+extern void init_systemd(void);
+extern void init_uart(void);
+extern void init_bcache(void);
+extern void init_icache(void);
+extern void init_disk(void);
+extern void task_schedule(void);
 
 
 void
-main()
+main(void)
 {
   if (cpuid() == 0) {
     init_uart();    // 终端初始化

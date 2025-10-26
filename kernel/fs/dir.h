@@ -1,10 +1,10 @@
 #pragma once
 
 #ifndef MKFS
-#include "type.h"
+#include "config.h"
+#include "util/types.h"
 #endif
 
-#define DLENGTH 16
 struct dentry {
   u32 ium;
   char name[DLENGTH] __attribute__((nonstring));

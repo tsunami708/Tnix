@@ -1,7 +1,7 @@
-#include "plic.h"
+#include "trap/plic.h"
 
 void
-init_plic()
+init_plic(void)
 {
   if (cpuid() == 0) {
     set_plic_priority(IRQ_UART0, 1);

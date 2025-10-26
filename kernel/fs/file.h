@@ -1,7 +1,5 @@
 #pragma once
-#include "type.h"
-
-#define NFILE 16
+#include "util/types.h"
 
 struct inode;
 

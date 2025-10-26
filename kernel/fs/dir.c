@@ -1,9 +1,9 @@
-#include "dir.h"
-#include "inode.h"
-#include "bio.h"
-#include "cpu.h"
-#include "string.h"
-#include "task.h"
+#include "fs/dir.h"
+#include "fs/inode.h"
+#include "fs/bio.h"
+#include "task/cpu.h"
+#include "task/task.h"
+#include "util/string.h"
 
 extern struct superblock rfs;
 
@@ -21,12 +21,12 @@ parse_path(const char* path, char dname[DLENGTH])
   const char* p = path;
   while (*p != '/' && *p != '\0')
     ++p;
-  memset(dname, 0, DLENGTH);
+  memset1(dname, 0, DLENGTH);
   if (*p == '/') {
-    strncpy(dname, path, p - path);
+    strncpy1(dname, path, p - path);
     return p + 1;
   }
-  strncpy(dname, path, p - path + 1);
+  strncpy1(dname, path, p - path + 1);
   return p;
 }
 
@@ -57,7 +57,7 @@ lookup_dentry(const char* path)
       buf = read_iobuf(dev, cur->di.iblock[i]);
       struct dentry* dentry = (void*)buf->data;
       for (int j = 0; j < BSIZE / sizeof(struct dentry); ++j)
-        if (strncmp(dname, (dentry + j)->name, DLENGTH) == 0) {
+        if (strncmp1(dname, (dentry + j)->name, DLENGTH) == 0) {
           put_inode(cur);
           cur = do_get_inode(sb, (dentry + j)->ium);
           found = true;

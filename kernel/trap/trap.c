@@ -20,13 +20,13 @@ RISC-V trap软件处理流程:
   1. x1~x31通用寄存器
   2. sepc,sstatus,scause,stval
 */
-#include "type.h"
-#include "riscv.h"
-#include "printf.h"
-#include "cpu.h"
 #include "config.h"
-#include "plic.h"
-#include "irqf.h"
+#include "util/types.h"
+#include "util/riscv.h"
+#include "util/printf.h"
+#include "task/cpu.h"
+#include "dev/irqf.h"
+#include "trap/plic.h"
 
 // 不要改变struct pt_regs的字段顺序
 // 异常上下文
@@ -41,14 +41,14 @@ struct pt_regs {
 #define IS_INTR(scause)   ((scause & (1UL << 63)) != 0)
 #define SCAUSE_EC(scause) (scause & ~(1UL << 63))
 
-extern void ktrap_entry();
-extern void utrap_entry();
+extern void ktrap_entry(void);
+extern void utrap_entry(void);
 
-extern void yield();
+extern void yield(void);
 extern char trampoline[];
 
 void
-init_trap()
+init_trap(void)
 {
   w_stvec((u64)ktrap_entry);
   // ktrap_entry四字节对齐,地址低2位被解读为 Direct模式
@@ -56,12 +56,12 @@ init_trap()
 static void
 unknow_trap(struct pt_regs* pt)
 {
-  u64  ec      = SCAUSE_EC(pt->scause);
-  bool intr    = IS_INTR(pt->scause);
-  u64  stval   = pt->stval;
-  u64  sepc    = pt->sepc;
-  u64  sstatus = pt->sstatus;
-  bool mode    = sstatus & SSTATUS_SPP;
+  u64 ec = SCAUSE_EC(pt->scause);
+  bool intr = IS_INTR(pt->scause);
+  u64 stval = pt->stval;
+  u64 sepc = pt->sepc;
+  u64 sstatus = pt->sstatus;
+  bool mode = sstatus & SSTATUS_SPP;
 
 
   panic("CPU%d Occur an unknown %s trap \n  \
@@ -107,8 +107,8 @@ static trap_fn exception_funs[] = {
 void
 do_trap(struct pt_regs* pt)
 {
-  u64  scause    = pt->scause;
-  u64  ec        = SCAUSE_EC(scause);
+  u64 scause = pt->scause;
+  u64 ec = SCAUSE_EC(scause);
   bool from_user = ((pt->sstatus & SSTATUS_SPP) == 0);
   if (from_user) {
     // print("cpu%d U-TRAP\n", cpuid());

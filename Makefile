@@ -7,25 +7,19 @@ OBJCOPY = riscv64-linux-gnu-objcopy
 OBJDUMP = riscv64-linux-gnu-objdump
 
 #编译器属性
-CFLAGS = -Wall -Werror -Wno-unknown-attributes -O0 -fno-omit-frame-pointer -ggdb -gdwarf-2
-CFLAGS += -MD
-CFLAGS += -mcmodel=medany
-CFLAGS += -ffreestanding
-CFLAGS += -fno-common -nostdlib 
+CFLAGS = -Wall -Werror -Wno-unknown-attributes -Wstrict-prototypes -O0 -fno-omit-frame-pointer -ggdb -gdwarf-2
+CFLAGS += -MD -mcmodel=medany
+CFLAGS += -fno-common -nostdlib -ffreestanding
 CFLAGS += -fno-builtin-strncpy -fno-builtin-strncmp -fno-builtin-strlen -fno-builtin-memset
 CFLAGS += -fno-builtin-memmove -fno-builtin-memcmp -fno-builtin-log -fno-builtin-bzero
 CFLAGS += -fno-builtin-strchr -fno-builtin-exit -fno-builtin-malloc -fno-builtin-putc
 CFLAGS += -fno-builtin-free
 CFLAGS += -fno-builtin-memcpy -Wno-main
 CFLAGS += -fno-builtin-printf -fno-builtin-fprintf -fno-builtin-vprintf
-CFLAGS += -Ikernel -Ikernel/boot -Ikernel/task -Ikernel/mem -Ikernel/dev -Ikernel/fs
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
-ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]no-pie'),)
 CFLAGS += -fno-pie -no-pie 
-endif
-ifneq ($(shell $(CC) -dumpspecs 2>/dev/null | grep -e '[^f]nopie'),)
-CFLAGS += -fno-pie -nopie
-endif
+CFLAGS += -Ikernel
+
 
 #链接器属性
 LDFLAGS = -z max-page-size=4096
@@ -57,14 +51,14 @@ OBJS = \
 	$K/fs/inode.o \
 	$K/fs/dir.o \
 	$K/fs/file.o \
-	$K/spinlock.o \
-	$K/sleeplock.o \
-	$K/printf.o \
-	$K/list.o \
-	$K/string.o \
-	$K/trap.o \
-	$K/pt_reg.o \
-	$K/plic.o \
+	$K/util/spinlock.o \
+	$K/util/sleeplock.o \
+	$K/util/printf.o \
+	$K/util/list.o \
+	$K/util/string.o \
+	$K/trap/trap.o \
+	$K/trap/pt_reg.o \
+	$K/trap/plic.o \
 
 
 
@@ -74,7 +68,7 @@ $K/kernel: $(OBJS) $K/kernel.ld
 	$(OBJDUMP) -t $K/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $K/kernel.sym
 
 $K/%.o: $K/%.S
-	$(CC) -g -c -o $@ $<
+	$(CC) $(CFLAGS) -g -c -o $@ $<
 
 
 -include kernel/*.d user/*.d

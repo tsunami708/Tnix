@@ -1,11 +1,7 @@
 #include "config.h"
-#include "task.h"
-#include "cpu.h"
-#include "printf.h"
-
-
-#include "dir.h" //test
-#include "inode.h"
+#include "task/task.h"
+#include "task/cpu.h"
+#include "util/printf.h"
 
 extern struct task task_queue[NPROC];
 
@@ -14,9 +10,9 @@ extern char utrap_entry[];
 extern char run_new_task[];
 
 extern void context_switch(struct context* old, struct context* new);
-extern void fsinit();
+extern void fsinit(void);
 void
-first_sched()
+first_sched(void)
 {
   struct task* t = mytask();
   release_spin(&t->lock);
@@ -27,15 +23,13 @@ first_sched()
     first = false;
     __sync_synchronize();
     fsinit();
-    struct inode* i = lookup_dentry("tdir/eee/eqw"); // test
-    print("我找到了inode号%d 引用计数%d 有效吗%d ", i->inum, i->refc, i->valid);
   }
 
 
   cli();
   /*
-    需要在进入用户态之前设置trap向量表寄存器stvec
-    在将stvec设置为utrap_entry和sret这段代码期间不可以发生中断
+    note: 需要在进入用户态之前设置trap向量表寄存器stvec
+    ! 在将stvec设置为utrap_entry和sret这段代码期间不可以发生中断
   */
 
   w_stvec((u64)utrap_entry - (u64)trampoline + TRAMPOLINE);
@@ -46,7 +40,7 @@ first_sched()
 }
 
 void
-yield()
+yield(void)
 {
   print("CPU %u yield systemd\n", cpuid());
   struct task* t = mytask();
@@ -91,7 +85,7 @@ wakeup(void* chan)
 }
 
 void
-task_schedule()
+task_schedule(void)
 {
   while (1) {
     for (int i = 0; i < NPROC; ++i) {

@@ -29,7 +29,7 @@ w_reg(int r, char v)
 }
 
 void
-init_uart()
+init_uart(void)
 {
   // 关闭中断
   w_reg(IER, 0x00);
@@ -51,7 +51,7 @@ init_uart()
 
 
 char
-uart_get()
+uart_get(void)
 {
   if (r_reg(LSR) & LSR_R)
     return r_reg(RHR);
@@ -66,7 +66,7 @@ uart_put_syn(char c)
 }
 
 void
-do_uart_irq()
+do_uart_irq(void)
 {
   char ch = uart_get();
   if (ch != (char)-1) {

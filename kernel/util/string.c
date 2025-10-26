@@ -1,6 +1,7 @@
-#include "string.h"
+#include "util/string.h"
+
 void*
-memset(void* dst, int c, u32 n)
+memset1(void* dst, int c, u32 n)
 {
   char* cdst = (char*)dst;
   int i;
@@ -10,14 +11,11 @@ memset(void* dst, int c, u32 n)
   return dst;
 }
 
-
-
 static void*
 memmove(void* dst, const void* src, u32 n)
 {
   const char* s;
   char* d;
-
   if (n == 0)
     return dst;
 
@@ -36,13 +34,13 @@ memmove(void* dst, const void* src, u32 n)
 }
 
 void*
-memcpy(void* dst, const void* src, u32 n)
+memcpy1(void* dst, const void* src, u32 n)
 {
   return memmove(dst, src, n);
 }
 
 int
-strncmp(const char* p, const char* q, u32 n)
+strncmp1(const char* p, const char* q, u32 n)
 {
   while (n > 0 && *p && *p == *q)
     n--, p++, q++;
@@ -52,10 +50,9 @@ strncmp(const char* p, const char* q, u32 n)
 }
 
 char*
-strncpy(char* s, const char* t, int n)
+strncpy1(char* s, const char* t, int n)
 {
   char* os;
-
   os = s;
   while (n-- > 0 && (*s++ = *t++) != 0)
     ;
@@ -66,10 +63,9 @@ strncpy(char* s, const char* t, int n)
 
 
 int
-strlen(const char* s)
+strlen1(const char* s)
 {
   int n;
-
   for (n = 0; s[n]; n++)
     ;
   return n;

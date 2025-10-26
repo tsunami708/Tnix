@@ -1,12 +1,8 @@
 #pragma once
-
-#define BSIZE    1024
-#define NDIRECT  12
-#define ROOTDEV  0
-#define ROOTINUM 0
-
+#
 #ifndef MKFS
-#include "type.h"
+#include "config.h"
+#include "util/types.h"
 struct inode;
 struct iobuf;
 struct superblock;
@@ -21,6 +17,11 @@ void free_block(struct superblock* sb, u32 blockno);
 #else
 typedef unsigned int u32;
 typedef unsigned long u64;
+#define BSIZE    1024
+#define NDIRECT  12
+#define ROOTDEV  0
+#define ROOTINUM 0
+#define DLENGTH  16
 #endif
 
 

@@ -1,9 +1,8 @@
 #pragma once
-#include "type.h"
-#include "sleeplock.h"
-#include "list.h"
-
-#define BSIZE 1024
+#include "config.h"
+#include "util/types.h"
+#include "util/sleeplock.h"
+#include "util/list.h"
 
 struct iobuf {
   char data[BSIZE];      // note: 至多一个线程访问数据块

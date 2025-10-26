@@ -1,10 +1,9 @@
-#include "bio.h"
-#include "spinlock.h"
-#include "list.h"
-#include "driver.h"
-#include "printf.h"
+#include "fs/bio.h"
+#include "util/spinlock.h"
+#include "util/list.h"
+#include "util/printf.h"
+#include "dev/driver.h"
 
-#define NIOBUF 16
 
 
 // desc: init_iobuf函数将struct iobuf通过链表串联,内核通过链表获取与释放缓冲块
@@ -99,7 +98,7 @@ release_iobuf(struct iobuf* buf)
 }
 
 void
-init_bcache()
+init_bcache(void)
 {
   list_init(&iobuf_bcache.head);
   iobuf_bcache.lock.lname = "iobuf_bcache";

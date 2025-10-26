@@ -1,10 +1,10 @@
-#include "fs.h"
-#include "bio.h"
-#include "cpu.h"
-#include "task.h"
-#include "inode.h"
-#include "string.h"
-#include "printf.h"
+#include "fs/fs.h"
+#include "fs/bio.h"
+#include "fs/inode.h"
+#include "task/cpu.h"
+#include "task/task.h"
+#include "util/string.h"
+#include "util/printf.h"
 
 
 // root filesystem
@@ -14,7 +14,7 @@ void
 read_superblock(dev_t dev, struct superblock* sb)
 {
   struct iobuf* buf = read_iobuf(dev, 1);
-  memcpy(sb, buf->data, sizeof(struct superblock));
+  memcpy1(sb, buf->data, sizeof(struct superblock));
   release_iobuf(buf);
 }
 
@@ -80,7 +80,7 @@ free_block(struct superblock* sb, u32 blockno)
 }
 
 void
-fsinit()
+fsinit(void)
 {
   read_superblock(ROOTDEV, &rfs);
   print("fsinit done , superblock info:\n");

@@ -1,5 +1,5 @@
 #pragma once
-#include "type.h"
+#include "util/types.h"
 #define ELF_MAGIC 0x464C457FU // "\x7FELF" in little endian
 
 // Values for Proghdr type

@@ -1,5 +1,5 @@
-#include "printf.h"
-#include "spinlock.h"
+#include "util/printf.h"
+#include "util/spinlock.h"
 
 INIT_SPINLOCK(pr); // 防止多核交错打印
 
@@ -31,7 +31,7 @@ struct var_para {
   u64 a5;
   u64 a6;
   u64 a7;
-  u8  i;
+  u8 i;
 };
 
 
@@ -46,8 +46,8 @@ printstr(const char* ch)
 static void
 printuint(i8 ns, struct var_para* vp) // ns表示进制
 {
-  int  i       = 0;
-  u64  num     = fetch_para(vp);
+  int i = 0;
+  u64 num = fetch_para(vp);
   char buf[21] = { 0 };
   if (num == 0) {
     uart_put_syn('0');
@@ -64,7 +64,7 @@ printuint(i8 ns, struct var_para* vp) // ns表示进制
 static void
 printint(i8 ns, struct var_para* vp)
 {
-  int i   = 0;
+  int i = 0;
   i64 num = fetch_para(vp);
   if (num < 0)
     uart_put_syn('-');

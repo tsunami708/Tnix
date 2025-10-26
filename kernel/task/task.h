@@ -1,9 +1,10 @@
 #pragma once
-#include "type.h"
-#include "list.h"
-#include "spinlock.h"
-#include "cpu.h"
-#include "file.h"
+#include "config.h"
+#include "util/types.h"
+#include "util/list.h"
+#include "util/spinlock.h"
+#include "task/cpu.h"
+#include "fs/file.h"
 
 struct inode;
 

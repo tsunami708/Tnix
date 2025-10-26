@@ -1,6 +1,6 @@
 #pragma once
-#include "type.h"
-#include "riscv.h"
+#include "util/types.h"
+#include "util/riscv.h"
 /*
   注意区分task上下文和trap上下文的区别
   trap入口是突然跳转的,和普通函数调用栈帧不同,不能依赖caller保存
@@ -14,40 +14,40 @@ struct context {
 
 struct cpu {
   // 顺序必须固定的字段
-  u64          id;
-  u64          cur_kstack; // cur_task的kstack副本
-  u64          cur_satp;   // 当前task的satp
+  u64 id;
+  u64 cur_kstack; // cur_task的kstack副本
+  u64 cur_satp;   // 当前task的satp
   struct task* cur_task;
-  u64          trap_addr;
+  u64 trap_addr;
   /////
 
-  bool raw_intr;  // 不持有自旋锁时的中断状态
-  u8   spinlevel; // 自旋锁层数
+  bool raw_intr; // 不持有自旋锁时的中断状态
+  u8 spinlevel;  // 自旋锁层数
 
   struct context ctx; // 调度器自身上下文
 };
 
 
 static inline struct cpu*
-mycpu()
+mycpu(void)
 {
   return (struct cpu*)r_tp();
 }
 
 static inline struct task*
-mytask()
+mytask(void)
 {
   return mycpu()->cur_task;
 }
 
 static inline u64
-cpuid()
+cpuid(void)
 {
   return mycpu()->id;
 }
 
 static inline void
-push_intr()
+push_intr(void)
 {
   struct cpu* c = mycpu();
   if (c->spinlevel == 0)
@@ -57,7 +57,7 @@ push_intr()
 }
 
 static inline void
-pop_intr()
+pop_intr(void)
 {
   struct cpu* c = mycpu();
   --c->spinlevel;

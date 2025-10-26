@@ -1,11 +1,11 @@
-#include "type.h"
-#include "spinlock.h"
-#include "alloc.h"
-#include "printf.h"
-#include "string.h"
-#include "sche.h"
 #include "config.h"
-#include "bio.h"
+#include "util/types.h"
+#include "util/spinlock.h"
+#include "util/printf.h"
+#include "util/string.h"
+#include "mem/alloc.h"
+#include "task/sche.h"
+#include "fs/bio.h"
 
 // virtio mmio control registers, mapped starting at 0x10001000.
 // from qemu virtio_mmio.h
@@ -207,19 +207,19 @@ virtio_disk_init(void)
   // allocate and zero queue memory.
 
   //! modified
-  disk.desc = (struct virtq_desc*)pha(kalloc());
-  disk.avail = (struct virtq_avail*)pha(kalloc());
-  disk.used = (struct virtq_used*)pha(kalloc());
+  disk.desc = (struct virtq_desc*)pha(alloc_page());
+  disk.avail = (struct virtq_avail*)pha(alloc_page());
+  disk.used = (struct virtq_used*)pha(alloc_page());
   //
 
 
   if (!disk.desc || !disk.avail || !disk.used)
-    panic("virtio disk kalloc");
+    panic("virtio disk alloc_page");
 
   //! modified
-  memset(disk.desc, 0, PGSIZE);
-  memset(disk.avail, 0, PGSIZE);
-  memset(disk.used, 0, PGSIZE);
+  memset1(disk.desc, 0, PGSIZE);
+  memset1(disk.avail, 0, PGSIZE);
+  memset1(disk.used, 0, PGSIZE);
   //!
 
   // set queue size.
@@ -249,7 +249,7 @@ virtio_disk_init(void)
 
 // find a free descriptor, mark it non-free, return its index.
 static int
-alloc_desc()
+alloc_desc(void)
 {
   for (int i = 0; i < NUM; i++) {
     if (disk.free[i]) {
@@ -387,7 +387,7 @@ virtio_disk_rw(struct iobuf* b, int write)
 }
 
 void
-virtio_disk_intr()
+virtio_disk_intr(void)
 {
   acquire_spin(&disk.vdisk_lock);
   /*
@@ -427,7 +427,7 @@ virtio_disk_intr()
 
 
 void
-init_disk()
+init_disk(void)
 {
   virtio_disk_init();
 }
@@ -444,10 +444,8 @@ disk_write(struct iobuf* buf)
   virtio_disk_rw(buf, 1);
 }
 
-static int disk_int_cnt = 0;
 void
-do_disk_irq()
+do_disk_irq(void)
 {
-  ++disk_int_cnt;
   virtio_disk_intr();
 }

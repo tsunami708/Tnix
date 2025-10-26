@@ -1,8 +1,9 @@
-#include "sleeplock.h"
-#include "cpu.h"
-#include "task.h"
-#include "sche.h"
-#include "printf.h"
+#include "util/sleeplock.h"
+#include "util/printf.h"
+
+#include "task/cpu.h"
+#include "task/task.h"
+#include "task/sche.h"
 
 bool
 holding_sleep(struct sleeplock* lock)

@@ -1,10 +1,10 @@
 #pragma once
-#include "type.h"
+#include "util/types.h"
 
 // M模式寄存器读写
 
 static inline u64
-r_mhartid()
+r_mhartid(void)
 {
   u64 x;
   asm volatile("csrr %0, mhartid" : "=r"(x));
@@ -18,7 +18,7 @@ r_mhartid()
 #define MSTATUS_SPIE     (1L << 5)
 #define MSTATUS_MPIE     (1L << 7)
 static inline u64
-r_mstatus()
+r_mstatus(void)
 {
   u64 x;
   asm volatile("csrr %0, mstatus" : "=r"(x));
@@ -26,7 +26,7 @@ r_mstatus()
 }
 
 static inline u64
-r_menvcfg()
+r_menvcfg(void)
 {
   u64 x;
   asm volatile("csrr %0, 0x30a" : "=r"(x));
@@ -34,7 +34,7 @@ r_menvcfg()
 }
 
 static inline u64
-r_mcounteren()
+r_mcounteren(void)
 {
   u64 x;
   asm volatile("csrr %0, mcounteren" : "=r"(x));
@@ -97,7 +97,7 @@ w_sepc(u64 x)
 }
 
 static inline u64
-r_time()
+r_time(void)
 {
   u64 x;
   asm volatile("csrr %0, time" : "=r"(x));
@@ -122,7 +122,7 @@ r_time()
 #define PTE_D     (1 << 7)
 #define SATP_MODE 0b1000UL << 60
 static inline u64
-r_satp()
+r_satp(void)
 {
   u64 x;
   asm volatile("csrr %0,satp" : "=r"(x));
@@ -138,7 +138,7 @@ w_satp(u64 x)
 #define SIE_SEIE (1UL << 9) // 外设中断
 #define SIE_STIE (1UL << 5) // 时钟中断
 static inline u64
-r_sie()
+r_sie(void)
 {
   u64 x;
   asm volatile("csrr %0, sie" : "=r"(x));
@@ -154,7 +154,7 @@ w_sie(u64 x)
 #define SSTATUS_SPIE (1L << 5)
 #define SSTATUS_SPP  (1L << 8)
 static inline u64
-r_sstatus()
+r_sstatus(void)
 {
   u64 x;
   asm volatile("csrr %0, sstatus" : "=r"(x));
@@ -169,19 +169,19 @@ w_sstatus(u64 x)
 
 // 关中断
 static inline void
-cli()
+cli(void)
 {
   w_sstatus(r_sstatus() & ~SSTATUS_SIE);
 }
 // 开中断
 static inline void
-sti()
+sti(void)
 {
   w_sstatus(r_sstatus() | SSTATUS_SIE);
 }
 // 获取中断使能状态
 static inline bool
-intr()
+intr(void)
 {
   return (r_sstatus() & SSTATUS_SIE) != 0;
 }
@@ -199,7 +199,7 @@ w_stvec(u64 x)
 }
 
 static inline u64
-r_sscratch()
+r_sscratch(void)
 {
   u64 x;
   asm volatile("csrr %0, sscratch" : "=r"(x));
@@ -215,7 +215,7 @@ w_sscratch(u64 x)
 // 通用寄存器读写
 
 static inline u64
-r_tp()
+r_tp(void)
 {
   u64 x;
   asm volatile("mv %0, tp" : "=r"(x));

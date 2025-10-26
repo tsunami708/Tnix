@@ -1,28 +1,28 @@
 #include "config.h"
-#include "type.h"
-#include "riscv.h"
-#include "cpu.h"
+#include "util/types.h"
+#include "util/riscv.h"
+#include "task/cpu.h"
 struct pt_regs;
-extern void main();
-extern int  do_trap(struct pt_regs*, u64);
+extern void main(void);
+extern int do_trap(struct pt_regs*, u64);
 
 __attribute__((aligned(16))) char cpu_stack[PGSIZE * NCPU];
 
 struct cpu cpus[NCPU];
 
-// static void
-// init_timer()
-// {
-//   w_menvcfg(r_menvcfg() | (1UL << 63)); // 为 S 模式启用 stimecmp
-//   w_mcounteren(r_mcounteren() | 2);     // 使能S\U模式下的 time 系统寄存器
-//   w_stimecmp(r_time() + TIME_CYCLE);
-// }
+static void
+init_timer(void)
+{
+  w_menvcfg(r_menvcfg() | (1UL << 63)); // 为 S 模式启用 stimecmp
+  w_mcounteren(r_mcounteren() | 2);     // 使能S\U模式下的 time 系统寄存器
+  w_stimecmp(r_time() + TIME_CYCLE);
+}
 
 void
-start()
+start(void)
 {
-  u64 cpuid             = r_mhartid();
-  cpus[cpuid].id        = cpuid;
+  u64 cpuid = r_mhartid();
+  cpus[cpuid].id = cpuid;
   cpus[cpuid].trap_addr = (u64)do_trap;
   w_tp((u64)(cpus + cpuid));
   /*每一个核的tp寄存器保存自身的struct cpu地址,在整个运行期间保持不变*/
@@ -46,8 +46,8 @@ start()
   w_pmpaddr0(0x3FFFFFFFFFFFFF); // 授权S模式物理地址访问空间
   w_pmpcfg0(0xF);               // 授权S模式物理地址访问权限
 
-  // init_timer();
-  // w_sie(r_sie() | SIE_STIE | SIE_SSIE);
+  init_timer();
+  w_sie(r_sie() | SIE_STIE | SIE_SSIE);
   asm volatile("mret");
 
   // mret做的事

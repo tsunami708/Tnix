@@ -1,18 +1,18 @@
 #pragma once
-#include "type.h"
-#include "list.h"
+#include "util/types.h"
+#include "util/list.h"
 
 // 物理页
 struct page {
-  u64              paddr;
-  bool             inuse;
+  u64 paddr;
+  bool inuse;
   struct list_node page_node;
 };
 
 // 申请1页
-struct page* kalloc();
+struct page* alloc_page(void);
 
 // 释放1页
-void kfree(struct page* p);
+void free_page(struct page* p);
 
 #define pha(page) (page->paddr)

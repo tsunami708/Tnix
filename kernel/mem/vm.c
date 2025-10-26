@@ -1,15 +1,15 @@
 #include "config.h"
-#include "alloc.h"
-#include "printf.h"
-#include "riscv.h"
-#include "vm.h"
-#include "cpu.h"
+#include "mem/alloc.h"
+#include "mem/vm.h"
+#include "util/printf.h"
+#include "util/riscv.h"
+#include "task/cpu.h"
 
 // 2->1->0
 #define va_level(va, level) (((va >> 12) >> (9 * level)) & 0x1FFUL)
 
 pagetable_t kernel_pgt; // 内核根页表
-u64         kernel_satp;
+u64 kernel_satp;
 
 extern char etext[];
 extern char trampoline[];
@@ -64,7 +64,7 @@ vmmap(pagetable_t ptb, u64 va, u64 pa, u64 size, u16 attr, i8 granularity)
         break;
       }
       if (!(*pte & PTE_V)) { // 需要创建非叶子 PTE（指向下一级页表）
-        u64 new_pt_pa = pha(kalloc());
+        u64 new_pt_pa = pha(alloc_page());
 
         *pte = ((new_pt_pa >> 12) << 10) | PTE_V;
       }
@@ -74,10 +74,10 @@ vmmap(pagetable_t ptb, u64 va, u64 pa, u64 size, u16 attr, i8 granularity)
 }
 
 void
-init_page()
+init_page(void)
 {
   if (cpuid() == 0) {
-    kernel_pgt = (pagetable_t)pha(kalloc());
+    kernel_pgt = (pagetable_t)pha(alloc_page());
     vmmap(kernel_pgt, CLINT, CLINT, CLINT_SIZE, PTE_R | PTE_W, S_PAGE);
     vmmap(kernel_pgt, PLIC, PLIC, PLIC_SIZE, PTE_R | PTE_W, S_PAGE);
     vmmap(kernel_pgt, UART0, UART0, UART0_SIZE, PTE_R | PTE_W, S_PAGE);
@@ -91,7 +91,7 @@ init_page()
     vmmap(kernel_pgt, KRODATA, KRODATA, KRODATA_SIZE, PTE_R, S_PAGE);
     vmmap(kernel_pgt, KDATA, KDATA, KDATA_SIZE, PTE_R | PTE_W, S_PAGE);
 
-    u64 va    = align_up(KDATA + KDATA_SIZE, PGSIZE);
+    u64 va = align_up(KDATA + KDATA_SIZE, PGSIZE);
     u64 bound = VA_TOP > PHY_TOP ? PHY_TOP : VA_TOP;
     for (; va % MPGSIZE && va < bound; va += PGSIZE)
       vmmap(kernel_pgt, va, va, PGSIZE, PTE_R | PTE_W, S_PAGE);

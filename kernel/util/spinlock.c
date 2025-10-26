@@ -1,6 +1,6 @@
-#include "spinlock.h"
-#include "cpu.h"
-#include "printf.h"
+#include "util/spinlock.h"
+#include "util/printf.h"
+#include "task/cpu.h"
 
 static bool
 holding_spin(struct spinlock* lock)
@@ -33,6 +33,6 @@ release_spin(struct spinlock* lock)
 }
 
 /*
-  cpu可能在某个执行流中获取多个自旋锁,在临界区内必须保证不被中断,之前粗暴acquire~cli,release~sti会
-  导致一个锁被释放而开中断,但cpu可能还处在另一个锁的临界区中,容易死锁
+  note: cpu可能在某个执行流中获取多个自旋锁,在临界区内必须保证不被中断,武断地acquire~cli,release~sti会
+  ! 导致一个锁被释放而开中断,但cpu可能还处在另一个锁的临界区中,容易死锁
 */

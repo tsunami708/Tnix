@@ -1,12 +1,13 @@
-#include "inode.h"
-#include "bio.h"
-#include "spinlock.h"
-#include "printf.h"
-#include "string.h"
+#include "config.h"
+#include "fs/inode.h"
+#include "fs/bio.h"
+#include "util/spinlock.h"
+#include "util/printf.h"
+#include "util/string.h"
 
-#define NINODE 50
-#define IPB    (BSIZE / sizeof(struct inode)) // 每块中的dinode个数
-#define BPB    (BSIZE * 8)                    // 每块比特位数
+
+#define IPB (BSIZE / sizeof(struct inode)) // 每块中的dinode个数
+#define BPB (BSIZE * 8)                    // 每块比特位数
 
 static struct {
   struct inode inodes[NINODE];
@@ -62,7 +63,7 @@ read_dinode(struct inode* inode)
   struct iobuf* buf = read_iobuf(inode->sb->dev, blockno);
   struct dinode* di = (void*)buf->data;
   di += offset_of_inode(inode);
-  memcpy(&inode->di, di, sizeof(struct dinode));
+  memcpy1(&inode->di, di, sizeof(struct dinode));
   release_iobuf(buf);
 }
 
@@ -78,7 +79,7 @@ write_dinode(struct inode* inode)
   struct iobuf* buf = read_iobuf(inode->sb->dev, blockno);
   struct dinode* di = (void*)buf->data;
   di += offset_of_inode(inode);
-  memcpy(di, &inode->di, sizeof(struct dinode));
+  memcpy1(di, &inode->di, sizeof(struct dinode));
   write_iobuf(buf);
   release_iobuf(buf);
 }
@@ -211,7 +212,7 @@ do_get_inode(struct superblock* sb, u32 inum)
 
 
 void
-init_icache()
+init_icache(void)
 {
   inode_icache.lock.lname = "inode_icache";
   for (int i = 0; i < NINODE; ++i) {

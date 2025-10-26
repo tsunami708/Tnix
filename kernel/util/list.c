@@ -1,5 +1,5 @@
-#include "type.h"
-#include "list.h"
+#include "util/types.h"
+#include "util/list.h"
 
 void
 list_pushback(struct list_node* head, struct list_node* node)

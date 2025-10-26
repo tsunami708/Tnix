@@ -1,5 +1,5 @@
 #pragma once
-#include "type.h"
+#include "util/types.h"
 
 struct cpu;
 
