@@ -18,7 +18,7 @@ CFLAGS += -fno-builtin-memcpy -Wno-main
 CFLAGS += -fno-builtin-printf -fno-builtin-fprintf -fno-builtin-vprintf
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 CFLAGS += -fno-pie -no-pie 
-CFLAGS += -Ikernel
+CFLAGS += -Ikernel -I.
 
 
 #链接器属性
@@ -59,8 +59,10 @@ OBJS = \
 	$K/trap/trap.o \
 	$K/trap/pt_reg.o \
 	$K/trap/plic.o \
+	$K/syscall/syscall.o \
+	$K/syscall/usys.o \
 
-
+U=user
 
 $K/kernel: $(OBJS) $K/kernel.ld
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS) 
@@ -80,7 +82,6 @@ clean:
 	-name "*.o" -o -name "*.d" -o -name "*.asm" -o -name "*.sym" \
 	\) -exec rm -f {} +
 	rm -f $K/kernel *.dtb mkfs/mkfs fs.img
-
 
 fs.img:
 	g++ mkfs/mkfs.cc -o mkfs/mkfs -I. -std=c++17 -g

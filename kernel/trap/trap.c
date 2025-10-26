@@ -21,22 +21,13 @@ RISC-V trap软件处理流程:
   2. sepc,sstatus,scause,stval
 */
 #include "config.h"
-#include "util/types.h"
 #include "util/riscv.h"
 #include "util/printf.h"
 #include "task/cpu.h"
 #include "dev/irqf.h"
+#include "trap/pt_reg.h"
 #include "trap/plic.h"
 
-// 不要改变struct pt_regs的字段顺序
-// 异常上下文
-struct pt_regs {
-  u64 ra, sp, gp, tp; // tp其实可以不用保存
-  u64 sepc, sstatus, stval, scause;
-  u64 t0, t1, t2, t3, t4, t5, t6;
-  u64 s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11;
-  u64 a0, a1, a2, a3, a4, a5, a6, a7;
-};
 
 #define IS_INTR(scause)   ((scause & (1UL << 63)) != 0)
 #define SCAUSE_EC(scause) (scause & ~(1UL << 63))
@@ -220,18 +211,24 @@ syn_store_fault(struct pt_regs* pt)
   print("cpu%u trigger %s\n", cpuid(), __func__);
   unknow_trap(pt);
 }
+
+extern void do_syscall(struct pt_regs* pt);
 static void
 syn_syscall_u(struct pt_regs* pt)
 {
   print("cpu%u trigger %s\n", cpuid(), __func__);
+  do_syscall(pt);
   pt->sepc += 4;
 }
 static void
 syn_syscall_s(struct pt_regs* pt)
 {
   print("cpu%u trigger %s\n", cpuid(), __func__);
+  do_syscall(pt);
   pt->sepc += 4;
 }
+
+
 static void
 syn_text_page_fault(struct pt_regs* pt)
 {

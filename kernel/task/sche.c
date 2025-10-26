@@ -42,13 +42,13 @@ first_sched(void)
 void
 yield(void)
 {
-  print("CPU %u yield systemd\n", cpuid());
+  // print("CPU %u yield systemd\n", cpuid());
   struct task* t = mytask();
   acquire_spin(&t->lock); //``
   t->state = READY;
   context_switch(&t->ctx, &mycpu()->ctx);
   release_spin(&t->lock); //*
-  print("CPU %u re-sche systemd\n", cpuid());
+  // print("CPU %u re-sche systemd\n", cpuid());
 }
 
 void

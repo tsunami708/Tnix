@@ -15,12 +15,16 @@ struct task task_queue[NPROC] = { { .pid = 1,
 extern char trampoline[];
 extern void first_sched(void);
 
-// systemd的执行逻辑,此函数在U模式下执行
+#include "syscall/usys.h"
+// desc: systemd的执行逻辑,此函数在U模式下执行
 __attribute__((section(".init.text"))) void
 systemd_main(void)
 {
+  int r = fork1();
+  (void)r;
   while (1)
     ;
+  exit1(0);
 }
 
 

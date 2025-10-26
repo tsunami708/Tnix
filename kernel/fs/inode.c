@@ -189,15 +189,25 @@ put_inode(struct inode* inode)
   release_spin(&inode->spin);
 }
 
-// desc: 如果get_inode返回的是无磁盘数据的inode,则立刻读盘
+#include "util/riscv.h"
+#include "task/cpu.h"
+//  desc: 如果get_inode返回的是无磁盘数据的inode,则立刻读盘
 struct inode*
 do_get_inode(struct superblock* sb, u32 inum)
 {
+  print("spinlevel:%d\n", mycpu()->spinlevel);
+  print("中断状态:%s\n", r_sstatus() & 0b10 ? "ON" : "OFF");
   struct inode* inode = get_inode(sb, inum);
+  print("spinlevel:%d\n", mycpu()->spinlevel);
+  print("中断状态:%s\n", r_sstatus() & 0b10 ? "ON" : "OFF");
   acquire_spin(&inode->spin);
   if (!inode->valid) {
     release_spin(&inode->spin);
+    print("spinlevel:%d\n", mycpu()->spinlevel);
+    print("中断状态:%s\n", r_sstatus() & 0b10 ? "ON" : "OFF");
     if (check_dinode(inode)) {
+      print("spinlevel:%d\n", mycpu()->spinlevel);
+      print("中断状态:%s\n", r_sstatus() & 0b10 ? "ON" : "OFF");
       acquire_sleep(&inode->lock);
       inode->valid = true;
       read_dinode(inode);

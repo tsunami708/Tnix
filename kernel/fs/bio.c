@@ -54,7 +54,6 @@ get_iobuf(dev_t dev, u32 blockno)
   panic("iobuf_bcache exhausted"); // todo: 阻塞等待闲置缓冲块而不是panic
 }
 
-
 // desc: 读取块设备dev上块号为blockno的数据
 // note: 并不总是发生设备IO,如果get_iobuf缓存命中则可以省去慢速IO
 struct iobuf*
