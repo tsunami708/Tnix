@@ -16,7 +16,7 @@ acquire_sleep(struct sleeplock* lock)
 {
   if (holding_sleep(lock))
     panic("task %s repeat acquire lock %s", mytask()->tname, lock->lname);
-  while (__sync_lock_test_and_set(&lock->locked, 1) != 0)
+  while (__sync_lock_test_and_set(&lock->locked, true) != 0)
     sleep(lock, NULL);
   __sync_synchronize();
   lock->task = mytask();
@@ -29,6 +29,6 @@ release_sleep(struct sleeplock* lock)
     panic("task %s illegal release lock %s", mytask()->tname, lock->lname);
   lock->task = NULL;
   __sync_synchronize();
-  __sync_lock_release(&lock->locked);
+  __sync_lock_release(&lock->locked, false);
   wakeup(lock);
 }

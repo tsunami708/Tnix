@@ -376,9 +376,8 @@ virtio_disk_rw(struct iobuf* b, int write)
   *R(VIRTIO_MMIO_QUEUE_NOTIFY) = 0; // value is queue number
 
   // Wait for virtio_disk_intr() to say request has finished.
-  while (b->disk == 1) {
+  while (b->disk == 1)
     sleep(b, &disk.vdisk_lock);
-  }
 
   disk.info[idx[0]].b = 0;
   free_chain(idx[0]);

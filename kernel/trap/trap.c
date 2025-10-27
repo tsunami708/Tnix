@@ -101,13 +101,8 @@ do_trap(struct pt_regs* pt)
   u64 scause = pt->scause;
   u64 ec = SCAUSE_EC(scause);
   bool from_user = ((pt->sstatus & SSTATUS_SPP) == 0);
-  if (from_user) {
-    // print("cpu%d U-TRAP\n", cpuid());
+  if (from_user)
     w_stvec((u64)ktrap_entry); // 进入do_trap时一定是关中断的
-    // sti();                     // 保存好trap上下文开启中断以允许嵌套(让S模式也能响应中断)
-  } else
-    ;
-  // print("cpu%d S-TRAP\n", cpuid()); // S模式不设计为嵌套中断
 
   if (IS_INTR(scause)) {
     ec = min(ec, sizeof(interrupt_funs) / sizeof(trap_fn) - 1);
@@ -145,7 +140,6 @@ asy_timer(struct pt_regs* pt)
 static void
 asy_extern(struct pt_regs* pt)
 {
-  // print("cpu%u trigger %s\n", cpuid(), __func__);
   u32 irq = plic_claim();
   switch (irq) {
   case IRQ_NONE:

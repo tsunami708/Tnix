@@ -8,7 +8,7 @@ OBJDUMP = riscv64-linux-gnu-objdump
 
 #编译器属性
 CFLAGS = -Wall -Werror -Wno-unknown-attributes -Wstrict-prototypes -O0 -fno-omit-frame-pointer -ggdb -gdwarf-2
-CFLAGS += -MD -mcmodel=medany
+CFLAGS += -MD -mcmodel=medany -std=gnu23
 CFLAGS += -fno-common -nostdlib -ffreestanding
 CFLAGS += -fno-builtin-strncpy -fno-builtin-strncmp -fno-builtin-strlen -fno-builtin-memset
 CFLAGS += -fno-builtin-memmove -fno-builtin-memcmp -fno-builtin-log -fno-builtin-bzero
@@ -28,7 +28,7 @@ LDFLAGS = -z max-page-size=4096
 ifndef CPUS
 CPUS := 4
 endif
-QEMUOPTS = -bios none -kernel $K/kernel -m 512M -smp $(CPUS) -nographic 
+QEMUOPTS = -bios none -kernel $K/kernel -m 512M -smp $(CPUS) -nographic -cpu rv64,d=false,f=false,zfa=false
 QEMUOPTS += -global virtio-mmio.force-legacy=false
 QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0

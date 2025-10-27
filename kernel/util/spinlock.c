@@ -15,7 +15,7 @@ acquire_spin(struct spinlock* lock)
   if (holding_spin(lock))
     panic("cpu%d repeat acquire %s", cpuid(), lock->lname);
 
-  while (__sync_lock_test_and_set(&lock->locked, 1) != 0)
+  while (__sync_lock_test_and_set(&lock->locked, true) != 0)
     ;
   __sync_synchronize();
   lock->cpu = mycpu();
@@ -28,7 +28,7 @@ release_spin(struct spinlock* lock)
     panic("cpu%d illegal release %s", cpuid(), lock->lname);
   lock->cpu = NULL;
   __sync_synchronize();
-  __sync_lock_release(&lock->locked);
+  __sync_lock_release(&lock->locked, false);
   pop_intr();
 }
 

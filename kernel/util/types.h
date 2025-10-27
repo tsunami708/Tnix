@@ -1,9 +1,5 @@
 #pragma once
-#define NULL (void*)0
-
-typedef int bool;
-#define true  1
-#define false 0
+#define NULL nullptr
 
 typedef signed char i8;
 typedef short i16;

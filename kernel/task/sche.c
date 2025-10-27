@@ -88,6 +88,8 @@ void
 task_schedule(void)
 {
   while (1) {
+    sti();
+    cli();
     for (int i = 0; i < NPROC; ++i) {
       struct task* t = task_queue + i;
       struct cpu* c = mycpu();
@@ -97,7 +99,9 @@ task_schedule(void)
         c->cur_task = t;
         c->cur_kstack = t->kstack;
         c->cur_satp = SATP_MODE | ((u64)t->pagetable >> 12);
+        __sync_synchronize();
         context_switch(&c->ctx, &t->ctx);
+        __sync_synchronize();
       }
       c->cur_task = NULL;     //! 不要在释放线程锁后置空,可能会被中断
       release_spin(&t->lock); //``

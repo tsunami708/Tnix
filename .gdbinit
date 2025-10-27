@@ -6,6 +6,11 @@ define la
   layout asm
 end
 
+define ss
+  p/t $sstatus
+end
+
+
 set confirm off
 set architecture riscv:rv64
 target remote 127.0.0.1:1234
