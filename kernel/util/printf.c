@@ -121,9 +121,9 @@ print(const char* fmt, ...)
 void
 panic(const char* fmt, ...)
 {
-  acquire_spin(&pr); // 故意不释放锁
   struct var_para vp;
   parse_para(vp);
+  acquire_spin(&pr); // 故意不释放锁
   printstr("\n\npanic: ");
   while (*fmt != '\0') {
     if (*fmt == '%') {

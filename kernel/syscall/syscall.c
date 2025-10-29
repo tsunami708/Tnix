@@ -1,6 +1,8 @@
 #include "syscall/syscall.h"
 #include "trap/pt_reg.h"
 #include "util/printf.h"
+#include "mem/vm.h"
+#include "task/task.h"
 
 static syscall_t syscalls[] = {
   [SYS_FORK] sys_fork,
@@ -20,6 +22,11 @@ do_syscall(struct pt_regs* pt)
 u64
 sys_fork(void)
 {
+  scan_pagetable(mytask()->pagetable);
+  struct task* t = alloc_task();
+  copy_pagetable(t, mytask());
+  print("\n");
+  scan_pagetable(t->pagetable);
   return 100;
 }
 u64

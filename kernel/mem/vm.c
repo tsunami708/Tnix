@@ -3,7 +3,10 @@
 #include "mem/vm.h"
 #include "util/printf.h"
 #include "util/riscv.h"
+#include "util/list.h"
+#include "util/string.h"
 #include "task/cpu.h"
+#include "task/task.h"
 
 // 2->1->0
 #define va_level(va, level) (((va >> 12) >> (9 * level)) & 0x1FFUL)
@@ -63,8 +66,8 @@ vmmap(pagetable_t ptb, u64 va, u64 pa, u64 size, u16 attr, i8 granularity)
         *pte = ((pa >> 12) << 10) | PTE_V | attr;
         break;
       }
-      if (!(*pte & PTE_V)) { // 需要创建非叶子 PTE（指向下一级页表）
-        u64 new_pt_pa = pha(alloc_page());
+      if (!(*pte & PTE_V)) {               // 需要创建非叶子 PTE（指向下一级页表）
+        u64 new_pt_pa = pha(alloc_page()); // TODO: FIX 目前存在无法回收的问题
 
         *pte = ((new_pt_pa >> 12) << 10) | PTE_V;
       }
@@ -72,6 +75,77 @@ vmmap(pagetable_t ptb, u64 va, u64 pa, u64 size, u16 attr, i8 granularity)
     }
   }
 }
+
+void
+task_vmmap(struct task* t, u64 va, u64 pa, u64 size, u16 attr, i8 granularity)
+{
+  vmmap(t->pagetable, va, pa, size, attr, granularity);
+  t->vmas.vmas[t->vmas.nvma].va = va;
+  t->vmas.vmas[t->vmas.nvma].pa = pa;
+  t->vmas.vmas[t->vmas.nvma].len = size;
+  t->vmas.vmas[t->vmas.nvma].attr = attr;
+  t->vmas.vmas[t->vmas.nvma++].gra = granularity;
+}
+
+void
+copy_pagetable(struct task* c, struct task* p)
+{
+  struct vma* pvm = &p->vmas.vmas[0];
+  while (pvm->pa > 0) {
+    if (pvm->attr & PTE_X)
+      task_vmmap(c, pvm->va, pvm->pa, pvm->len, pvm->attr, pvm->gra);
+    else {
+      struct page* page = alloc_page();
+      list_pushback(&c->pages, &page->page_node);
+      memcpy1((void*)page->paddr, (void*)pvm->pa, PGSIZE);
+      task_vmmap(c, pvm->va, pha(page), pvm->len, pvm->attr, pvm->gra);
+    }
+    ++pvm;
+  }
+}
+
+
+
+static void // 遍历页表
+walk(pagetable_t ptb, u64 va_base, i8 level)
+{
+  for (u64 i = 0; i < 512; ++i) {
+    pte_t pte = ptb[i];
+    if (!(pte & PTE_V))
+      continue;
+
+    u64 va = va_base | (i << (12 + 9 * level));
+    u64 pa = (pte >> 10) << 12;
+
+    if (level == 0 || (pte & (PTE_R | PTE_W | PTE_X))) {
+      print("VA: 0x%x -> PA: 0x%x | ", va, pa);
+      if (pte & PTE_R)
+        print("R");
+      if (pte & PTE_W)
+        print("W");
+      if (pte & PTE_X)
+        print("X");
+      if (pte & PTE_U)
+        print("U");
+      if (pte & PTE_G)
+        print("G");
+      if (pte & PTE_A)
+        print("A");
+      if (pte & PTE_D)
+        print("D");
+      print("\n");
+    } else {
+      pagetable_t next = (pagetable_t)pa;
+      walk(next, va, level - 1);
+    }
+  }
+}
+void
+scan_pagetable(pagetable_t ptb)
+{
+  walk(ptb, 0, 2);
+}
+
 
 void
 init_page(void)

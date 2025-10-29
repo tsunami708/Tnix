@@ -44,6 +44,7 @@ OBJS = \
 	$K/task/sche.o \
 	$K/task/switch.o \
 	$K/task/systemd.o \
+	$K/task/task.o \
 	$K/dev/uart.o \
 	$K/dev/disk.o \
 	$K/fs/bio.o \

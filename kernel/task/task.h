@@ -9,6 +9,7 @@
 struct inode;
 
 enum task_state {
+  FREE,
   INIT,
   READY,
   RUN,
@@ -19,6 +20,15 @@ enum task_state {
 struct trapframe {
   u64 ksatp;
 };
+
+struct vma {
+  u64 va;
+  u64 pa;
+  u64 len;
+  u16 attr;
+  i8 gra;
+};
+
 
 struct task {
   // 顺序必须固定的字段
@@ -47,5 +57,12 @@ struct task {
 
   struct list_node pages;
 
+  struct {
+    struct vma vmas[12];
+    int nvma;
+  } vmas;
+
   const char* tname;
 };
+
+struct task* alloc_task();

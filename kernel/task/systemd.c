@@ -4,13 +4,8 @@
 #include "mem/alloc.h"
 #include "mem/vm.h"
 
-struct task task_queue[NPROC] = { { .pid = 1,
-                                    .tid = 1,
-                                    .kstack = 0,
-                                    .state = INIT,
-                                    .lock = { .lname = "systemd_lock", .locked = false, .cpu = NULL },
-                                    .pages = { .next = &task_queue[0].pages, .prev = &task_queue[0].pages },
-                                    .tname = "systemd" } };
+INIT_SPINLOCK(tq);
+struct task task_queue[NPROC] = { { .pid = 1, .tid = 1, .kstack = 0, .state = INIT, .tname = "systemd" } };
 
 extern char trampoline[];
 extern void first_sched(void);
@@ -37,6 +32,9 @@ void
 init_systemd(void)
 {
   struct task* t = task_queue;
+  t->lock.lname = "systemd";
+  list_init(&t->pages);
+
   struct page* kst = alloc_page();
   t->kstack = pha(kst) + PGSIZE; // 为1号task分配内核栈
   list_pushback(&t->pages, &kst->page_node);
@@ -56,12 +54,9 @@ init_systemd(void)
 
   // TRAMPOLINE页必须在内核和用户的页表中虚拟地址必须相同
   vmmap(t->pagetable, TRAMPOLINE, (u64)trampoline, PGSIZE, PTE_X | PTE_R, S_PAGE);
-
   vmmap(t->pagetable, TRAPFRAME, pha(tf), PGSIZE, PTE_R, S_PAGE);
-
-
-  vmmap(t->pagetable, USTACK, pha(ust), PGSIZE, PTE_R | PTE_W | PTE_U, S_PAGE);
-  vmmap(t->pagetable, UINIT, UINIT, UINIT_SIZE, PTE_R | PTE_X | PTE_U, S_PAGE);
+  task_vmmap(t, USTACK, pha(ust), PGSIZE, PTE_R | PTE_W | PTE_U, S_PAGE);
+  task_vmmap(t, UINIT, UINIT, UINIT_SIZE, PTE_R | PTE_X | PTE_U, S_PAGE);
 
   t->entry = (u64)systemd_main;
   t->ctx.ra = (u64)first_sched;

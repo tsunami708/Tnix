@@ -47,20 +47,9 @@ init_trap(void)
 static void
 unknow_trap(struct pt_regs* pt)
 {
-  u64 ec = SCAUSE_EC(pt->scause);
   bool intr = IS_INTR(pt->scause);
-  u64 stval = pt->stval;
-  u64 sepc = pt->sepc;
-  u64 sstatus = pt->sstatus;
-  bool mode = sstatus & SSTATUS_SPP;
-
-
-  panic("CPU%d Occur an unknown %s trap \n  \
-      scause %s %u\n  \
-      stval %x\n  \
-      sepc %x\n  \
-      sstatus %x\n\n",
-        cpuid(), mode == 0 ? "U" : "S", intr ? "interrupt" : "exception", ec, stval, sepc, sstatus);
+  u64 ec = SCAUSE_EC(pt->scause);
+  panic("%s-%u-sepc:%x-stval:%x", intr ? "int" : "exp", ec, pt->sepc, pt->stval);
 }
 
 // interrupt handler
