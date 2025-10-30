@@ -42,6 +42,7 @@ struct task {
 
   u16 pid, tid;
   struct task* parent;
+  int exit_code;
 
   void* chan;
 

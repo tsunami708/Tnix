@@ -4,6 +4,8 @@
 #include "util/string.h"
 #include "task/task.h"
 #include "mem/vm.h"
+#include "mem/alloc.h"
+#include "fs/file.h"
 
 
 static syscall_t syscalls[] = {
@@ -23,7 +25,7 @@ do_syscall(struct pt_regs* pt)
 }
 
 u64
-sys_fork(struct pt_regs* pt)
+sys_fork(struct pt_regs*)
 {
   extern void dump_context(struct context * ctx);
 
@@ -46,8 +48,30 @@ sys_fork(struct pt_regs* pt)
 u64
 sys_exit(struct pt_regs* pt)
 {
-  return 1;
+  extern void context_switch(struct context * old, struct context * new);
+
+  struct task* t = mytask();
+  t->exit_code = pt->a0;
+
+  for (int i = 0; i < t->files.i; ++i)
+    close_file(&t->files.f[i]);
+  t->files.i = 0;
+
+  t->vmas.nvma = 0;
+
+  struct list_node *cur = t->pages.next, *tmp;
+  while (cur != &t->pages) {
+    tmp = cur->next;
+    free_page(container_of(cur, struct page, page_node));
+    cur = tmp;
+  }
+
+  acquire_spin(&t->lock);
+  t->state = EXIT;
+  context_switch(&t->ctx, &mycpu()->ctx);
+  return 0;
 }
+
 u64
 sys_exec(struct pt_regs* pt)
 {

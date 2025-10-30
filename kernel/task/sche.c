@@ -39,13 +39,13 @@ first_sched(void)
 void
 yield(void)
 {
-  print("CPU %u yield task:%d\n", cpuid(), mytask()->tid);
+  print("CPU %u yield task-%d\n", cpuid(), mytask()->tid);
   struct task* t = mytask();
   acquire_spin(&t->lock); //``
   t->state = READY;
   context_switch(&t->ctx, &mycpu()->ctx);
   release_spin(&t->lock); //*
-  print("CPU %u sche task%d\n", cpuid(), mytask()->tid);
+  print("CPU %u sched task-%d\n", cpuid(), mytask()->tid);
 }
 
 void

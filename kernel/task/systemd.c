@@ -8,10 +8,10 @@ __attribute__((section(".init.text"))) void
 systemd_main(void)
 {
   int r = fork1();
-  (void)r;
+  if (r == 0)
+    exit1(1);
   while (1)
     ;
-  exit1(0);
 }
 
 extern char init[];

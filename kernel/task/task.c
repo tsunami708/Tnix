@@ -69,8 +69,8 @@ task_init(struct task* t, struct task* parent)
   list_pushback(&t->pages, &p->page_node);
   vmmap(t->pagetable, TRAPFRAME, pha(p), PGSIZE, PTE_R, S_PAGE, t);
 
-  //! 映射trampoline页 |  TRAMPOLINE页必须在内核和用户的页表中虚拟地址必须相同
-  vmmap(t->pagetable, TRAMPOLINE, (u64)trampoline, PGSIZE, PTE_X | PTE_R, S_PAGE, t);
+  //! 映射trampoline页 |  TRAMPOLINE页必须在内核和用户的页表中虚拟地址必须相同 | 该页所有task共享
+  vmmap(t->pagetable, TRAMPOLINE, (u64)trampoline, PGSIZE, PTE_X | PTE_R, S_PAGE, NULL);
 }
 
 struct task*
