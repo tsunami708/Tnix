@@ -15,8 +15,9 @@
 
 .section .text
 .global context_switch
+.global dump_context
 
-context_switch:
+.macro store_context
   sd ra, CT_RA(a0)
   sd sp, CT_SP(a0)
   sd s0, CT_S0(a0)
@@ -31,6 +32,14 @@ context_switch:
   sd s9, CT_S9(a0)
   sd s10, CT_S10(a0)
   sd s11, CT_S11(a0)
+.endm
+
+dump_context:
+  store_context
+  ret
+
+context_switch:
+  store_context  
 
   ld ra, CT_RA(a1) #important
   ld sp, CT_SP(a1)

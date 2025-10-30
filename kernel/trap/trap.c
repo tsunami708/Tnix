@@ -87,9 +87,12 @@ static trap_fn exception_funs[] = {
 void
 do_trap(struct pt_regs* pt)
 {
+  u64 sstatus = pt->sstatus;
+  u64 sepc = pt->sepc;
   u64 scause = pt->scause;
   u64 ec = SCAUSE_EC(scause);
-  bool from_user = ((pt->sstatus & SSTATUS_SPP) == 0);
+  bool from_user = ((sstatus & SSTATUS_SPP) == 0);
+
   if (from_user)
     w_stvec((u64)ktrap_entry); // 进入do_trap时一定是关中断的
 
@@ -99,6 +102,8 @@ do_trap(struct pt_regs* pt)
   } else {
     ec = min(ec, sizeof(exception_funs) / sizeof(trap_fn) - 1);
     exception_funs[ec](pt);
+    if (ec == 8) // U-syscall
+      sepc += 4;
   }
 
   if (from_user) {
@@ -107,8 +112,8 @@ do_trap(struct pt_regs* pt)
   }
 
   // ! sstatus和spec可能会被嵌套trap所修改,sret会清SPP位
-  w_sstatus(pt->sstatus);
-  w_sepc(pt->sepc);
+  w_sstatus(sstatus);
+  w_sepc(sepc);
 }
 
 // interrupt handler
@@ -121,7 +126,7 @@ asy_ipi(struct pt_regs* pt)
 static void
 asy_timer(struct pt_regs* pt)
 {
-  print("cpu%u trigger %s\n", cpuid(), __func__);
+  // print("cpu%u trigger %s\n", cpuid(), __func__);
   w_stimecmp(r_time() + TIME_CYCLE);
   if ((r_sstatus() & SSTATUS_SPP) == 0)
     yield();
@@ -201,14 +206,12 @@ syn_syscall_u(struct pt_regs* pt)
 {
   print("cpu%u trigger %s\n", cpuid(), __func__);
   do_syscall(pt);
-  pt->sepc += 4;
 }
 static void
 syn_syscall_s(struct pt_regs* pt)
 {
   print("cpu%u trigger %s\n", cpuid(), __func__);
-  do_syscall(pt);
-  pt->sepc += 4;
+  unknow_trap(pt);
 }
 
 

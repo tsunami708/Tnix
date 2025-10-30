@@ -1,6 +1,7 @@
 #include "task/task.h"
 #include "mem/alloc.h"
 #include "mem/vm.h"
+#include "util/string.h"
 #include "util/spinlock.h"
 #include "util/printf.h"
 
@@ -22,25 +23,40 @@ alloc_tid()
 }
 
 static void
-task_init(struct task* t)
+copy_files(struct task* c, struct task* p)
+{
+  memcpy1(&c->files, &p->files, sizeof(p->files));
+}
+
+static void
+task_init(struct task* t, struct task* parent)
 {
   extern u64 kernel_satp;
   extern char trampoline[];
+  struct page* p;
 
+  t->tname = "task";
+  t->lock.lname = "task-lock";
   t->pid = t->tid = alloc_tid();
   list_init(&t->pages);
 
   //* 分配页表
-  struct page* p = alloc_page();
-  list_pushback(&t->pages, &p->page_node);
-  t->pagetable = (pagetable_t)pha(p);
-
-  //* 分配用户栈
   p = alloc_page();
   list_pushback(&t->pages, &p->page_node);
+  t->pagetable = (pagetable_t)pha(p);
   t->ustack = USTACK + PGSIZE;
-  task_vmmap(t, USTACK, pha(p), PGSIZE, PTE_R | PTE_W | PTE_U, S_PAGE);
 
+  if (parent) {
+    t->parent = parent;
+    t->cwd = parent->cwd;
+    copy_pagetable(t, parent);
+    copy_files(t, parent);
+  } else {
+    //* 分配用户栈
+    p = alloc_page();
+    list_pushback(&t->pages, &p->page_node);
+    task_vmmap(t, USTACK, pha(p), PGSIZE, PTE_R | PTE_W | PTE_U, S_PAGE);
+  }
 
   //* 分配内核栈
   p = alloc_page();
@@ -58,7 +74,7 @@ task_init(struct task* t)
 }
 
 struct task*
-alloc_task()
+alloc_task(struct task* p)
 {
   acquire_spin(&tq);
   for (int i = 0; i < NPROC; ++i) {
@@ -67,7 +83,7 @@ alloc_task()
       task_queue[i].state = INIT;
       release_spin(&task_queue[i].lock);
       release_spin(&tq);
-      task_init(task_queue + i);
+      task_init(task_queue + i, p);
       return task_queue + i;
     }
     release_spin(&task_queue[i].lock);

@@ -65,4 +65,4 @@ struct task {
   const char* tname;
 };
 
-struct task* alloc_task();
+struct task* alloc_task(struct task* p);

@@ -1,5 +1,6 @@
 #pragma once
 #include "util/types.h"
+#include "task/task.h"
 // 不要改变struct pt_regs的字段顺序
 // 异常上下文
 struct pt_regs {
@@ -9,3 +10,9 @@ struct pt_regs {
   u64 s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11;
   u64 a0, a1, a2, a3, a4, a5, a6, a7;
 };
+
+static inline struct pt_regs*
+mypt(void)
+{
+  return (void*)mytask()->kstack - sizeof(struct pt_regs);
+}

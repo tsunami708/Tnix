@@ -2,7 +2,6 @@
 #include "task/task.h"
 #include "task/cpu.h"
 #include "util/printf.h"
-
 extern struct task task_queue[NPROC];
 
 extern char trampoline[];
@@ -25,7 +24,6 @@ first_sched(void)
     fsinit();
   }
 
-
   cli();
   /*
     note: 需要在进入用户态之前设置trap向量表寄存器stvec
@@ -35,20 +33,19 @@ first_sched(void)
   w_stvec((u64)utrap_entry - (u64)trampoline + TRAMPOLINE);
   w_sstatus((r_sstatus() & ~SSTATUS_SPP) | SSTATUS_SPIE);
   w_sepc(t->entry);
-  print("CPU %u first-sche systemd\n", cpuid());
   ((void (*)(u64, u64))addr)(mycpu()->cur_satp, t->ustack);
 }
 
 void
 yield(void)
 {
-  // print("CPU %u yield systemd\n", cpuid());
+  print("CPU %u yield task:%d\n", cpuid(), mytask()->tid);
   struct task* t = mytask();
   acquire_spin(&t->lock); //``
   t->state = READY;
   context_switch(&t->ctx, &mycpu()->ctx);
   release_spin(&t->lock); //*
-  // print("CPU %u re-sche systemd\n", cpuid());
+  print("CPU %u sche task%d\n", cpuid(), mytask()->tid);
 }
 
 void

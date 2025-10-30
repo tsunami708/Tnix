@@ -10,6 +10,13 @@ define ss
   p/t $sstatus
 end
 
+define slock
+  set scheduler-locking on
+end
+
+define sunlock
+  set scheduler-locking off
+end
 
 set confirm off
 set architecture riscv:rv64

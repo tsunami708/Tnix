@@ -24,7 +24,7 @@ init_systemd(void)
 {
   extern void first_sched(void);
 
-  struct task* t = alloc_task();
+  struct task* t = alloc_task(NULL);
   t->tname = "systemd";
   t->lock.lname = "systemd-lock";
   task_vmmap(t, UINIT, UINIT, UINIT_SIZE, PTE_R | PTE_X | PTE_U, S_PAGE);

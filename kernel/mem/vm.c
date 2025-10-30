@@ -78,6 +78,8 @@ vmmap(pagetable_t ptb, u64 va, u64 pa, u64 size, u16 attr, i8 gra, struct task* 
   }
 }
 
+
+//! trampoline,trapframe页的映射直接走vmmap,不使用task_vmmap
 void
 task_vmmap(struct task* t, u64 va, u64 pa, u64 size, u16 attr, i8 gra)
 {
@@ -94,7 +96,7 @@ copy_pagetable(struct task* c, struct task* p)
 {
   struct vma* pvm = &p->vmas.vmas[0];
   while (pvm->pa > 0) {
-    if (pvm->attr & PTE_X)
+    if ((pvm->attr & PTE_W) == 0)
       task_vmmap(c, pvm->va, pvm->pa, pvm->len, pvm->attr, pvm->gra);
     else {
       struct page* page = alloc_page();
