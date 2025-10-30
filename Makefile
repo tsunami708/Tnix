@@ -82,9 +82,10 @@ clean:
 	-name "*.log" -o -name "*.ind" -o -name "*.ilg" -o \
 	-name "*.o" -o -name "*.d" -o -name "*.asm" -o -name "*.sym" \
 	\) -exec rm -f {} +
-	rm -f $K/kernel *.dtb mkfs/mkfs fs.img
+	rm -f $K/kernel *.dtb
 
 fs.img:
+	rm -rf mkfs/mkfs fs.img
 	g++ mkfs/mkfs.cc -o mkfs/mkfs -I. -std=c++17 -g
 	mkfs/mkfs user
 

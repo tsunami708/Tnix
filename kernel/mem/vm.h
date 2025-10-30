@@ -6,7 +6,7 @@
 #define G_PAGE 2 // 1GB
 
 struct task;
-void vmmap(pagetable_t ptb, u64 va, u64 pa, u64 size, u16 attr, i8 granularity);
-void task_vmmap(struct task* t, u64 va, u64 pa, u64 size, u16 attr, i8 granularity);
+void vmmap(pagetable_t ptb, u64 va, u64 pa, u64 size, u16 attr, i8 gra, struct task* ut);
+void task_vmmap(struct task* t, u64 va, u64 pa, u64 size, u16 attr, i8 gra);
 void copy_pagetable(struct task* c, struct task* p);
 void scan_pagetable(pagetable_t ptb);

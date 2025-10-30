@@ -84,11 +84,5 @@ void
 fsinit(void)
 {
   read_superblock(ROOTDEV, &rfs);
-  print("fsinit done , superblock info:\n");
-  print("    fs_name:%s\n", rfs.name);
-  print("    imap:%u\n    inodes:%u\n    bmap:%u\n", rfs.imap, rfs.inodes, rfs.bmap);
-  print("    blocks:%u\n    max_i:%u\n    max_b:%u\n", rfs.blocks, rfs.max_inode, rfs.max_nblock);
   mytask()->cwd = do_get_inode(&rfs, ROOTINUM);
-  struct inode* x = lookup_dentry("dir1/dir2/test");
-  print("test inum:%d\n", x->inum);
 }
