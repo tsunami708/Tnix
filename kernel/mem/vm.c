@@ -150,6 +150,70 @@ scan_pagetable(pagetable_t ptb)
   walk(ptb, 0, 2);
 }
 
+static pte_t*
+get_pte(pagetable_t ptb, u64 va)
+{
+  pte_t* cur = (pte_t*)ptb;
+  pte_t* pte;
+
+  for (i8 level = 2; level >= 0; --level) {
+    u64 vpn = va_level(va, level);
+    pte = &cur[vpn];
+
+    if (!(*pte & PTE_V))
+      return NULL;
+
+    if (*pte & (PTE_R | PTE_W | PTE_X))
+      return pte;
+
+    cur = (pte_t*)((*pte >> 10) << 12);
+  }
+  return NULL;
+}
+
+static u64
+va_to_pa(pagetable_t ptb, u64 va, pte_t** p) // TODO: 目前只适用于4KB页
+{
+  pte_t* pte = get_pte(ptb, va);
+
+  if (pte == NULL)
+    return 0;
+
+  if (!(*pte & (PTE_R | PTE_W | PTE_X)))
+    return 0;
+
+  if (p)
+    *p = pte;
+
+  u64 ppn = (*pte >> 10) & ((1UL << 44) - 1);
+  u64 offset = va & (PGSIZE - 1);
+
+  return (ppn << 12) | offset;
+}
+
+bool
+copy_to_user(void* udst, const void* ksrc, u32 bytes)
+{
+  pte_t *spte = NULL, *epte = NULL;
+  u64 start = va_to_pa(mytask()->pagetable, (u64)udst, &spte);
+  u64 end = va_to_pa(mytask()->pagetable, (u64)(bytes + udst) - 1, &epte);
+  if (start != 0 && end != 0) {
+    if (((*spte) & (PTE_U | PTE_W)) == (PTE_U | PTE_W)) {
+      if (spte == epte) { // 不跨页
+        memcpy1((void*)start, ksrc, bytes);
+        return true;
+      } else { // 跨页
+        if (((*epte) & (PTE_U | PTE_W)) == (PTE_U | PTE_W)) {
+          // todo:
+        }
+        goto bad;
+      }
+    }
+    goto bad;
+  }
+bad:
+  return false;
+}
 
 void
 init_page(void)

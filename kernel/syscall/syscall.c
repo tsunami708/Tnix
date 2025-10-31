@@ -3,15 +3,18 @@
 #include "util/printf.h"
 #include "util/string.h"
 #include "task/task.h"
+#include "task/sche.h"
 #include "mem/vm.h"
 #include "mem/alloc.h"
 #include "fs/file.h"
+#include "fs/inode.h"
 
 
 static syscall_t syscalls[] = {
   [SYS_FORK] sys_fork,
   [SYS_EXIT] sys_exit,
   [SYS_EXEC] sys_exec,
+  [SYS_WAIT] sys_wait,
 };
 
 void
@@ -31,6 +34,7 @@ sys_fork(struct pt_regs*)
 
   struct task* p = mytask();
   struct task* c = alloc_task(p);
+  list_pushback(&p->childs, &c->self);
   memcpy1((void*)c->kstack - PGSIZE, (void*)p->kstack - PGSIZE, PGSIZE);
   dump_context(&c->ctx);
   if (mytask() == p) {
@@ -53,6 +57,8 @@ sys_exit(struct pt_regs* pt)
   struct task* t = mytask();
   t->exit_code = pt->a0;
 
+  put_inode(t->cwd);
+
   for (int i = 0; i < t->files.i; ++i)
     close_file(&t->files.f[i]);
   t->files.i = 0;
@@ -66,8 +72,10 @@ sys_exit(struct pt_regs* pt)
     cur = tmp;
   }
 
-  acquire_spin(&t->lock);
   t->state = EXIT;
+  wakeup(&t->parent->childs);
+
+  acquire_spin(&t->lock);
   context_switch(&t->ctx, &mycpu()->ctx);
   return 0;
 }
@@ -76,4 +84,29 @@ u64
 sys_exec(struct pt_regs* pt)
 {
   return 1;
+}
+
+u64
+sys_wait(struct pt_regs* pt)
+{
+  struct task* t = mytask();
+  if (t->childs.next == &t->childs)
+    return -1;
+
+  while (1) {
+    struct list_node* child = t->childs.next;
+    while (child != &t->childs) {
+      struct task* c = container_of(child, struct task, self);
+      if (c->state == EXIT) {
+        u16 cpid = c->pid;
+        list_remove(&c->self);
+        if (pt->a0)
+          copy_to_user((void*)pt->a0, &c->exit_code, sizeof(c->exit_code));
+        c->state = FREE;
+        return cpid;
+      }
+      child = child->next;
+    }
+    sleep(&t->childs, NULL);
+  }
 }

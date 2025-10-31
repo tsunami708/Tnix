@@ -58,6 +58,9 @@ struct task {
 
   struct list_node pages;
 
+  struct list_node childs;
+  struct list_node self;
+
   struct {
     struct vma vmas[12];
     int nvma;

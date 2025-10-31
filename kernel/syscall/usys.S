@@ -19,3 +19,9 @@ exec1:
   li a7, SYS_EXEC
   ecall
   ret
+
+.global wait1
+wait1:
+  li a7, SYS_WAIT
+  ecall
+  ret

@@ -10,8 +10,13 @@ systemd_main(void)
   int r = fork1();
   if (r == 0)
     exit1(1);
-  while (1)
-    ;
+  else if (r > 0) {
+    int status;
+    u16 pid = wait1(&status);
+    (void)pid;
+    while (1)
+      ;
+  }
 }
 
 extern char init[];

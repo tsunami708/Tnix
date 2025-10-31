@@ -4,6 +4,7 @@
 #include "util/string.h"
 #include "util/spinlock.h"
 #include "util/printf.h"
+#include "fs/inode.h"
 
 
 INIT_SPINLOCK(tq);
@@ -39,6 +40,7 @@ task_init(struct task* t, struct task* parent)
   t->lock.lname = "task-lock";
   t->pid = t->tid = alloc_tid();
   list_init(&t->pages);
+  list_init(&t->childs);
 
   //* 分配页表
   p = alloc_page();
@@ -49,6 +51,7 @@ task_init(struct task* t, struct task* parent)
   if (parent) {
     t->parent = parent;
     t->cwd = parent->cwd;
+    get_inode(t->cwd->sb, t->cwd->inum);
     copy_pagetable(t, parent);
     copy_files(t, parent);
   } else {
