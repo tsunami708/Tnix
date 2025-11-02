@@ -1,305 +1,366 @@
 #define MKFS
-
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <unistd.h>
-#include <dirent.h>
-#include <fcntl.h>
-
 #include "kernel/fs/fs.h"
 #include "kernel/fs/dir.h"
 
-#include <unordered_map>
+#include <unistd.h>
+#include <dirent.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <stdio.h>
+#include <string.h>
+
+#include <queue>
 #include <string>
-#include <vector>
-using fimap = std::unordered_map<std::string, u32>; //<filename,inode_num>
-using child_dir = std::vector<std::string>;
+
 using std::pair;
+using std::queue;
+using std::string;
 
-u32 copy(const char* dirpath, u32 pinode, bool root = false);
+//* USER CONFIG
+constexpr u32 MAX_FILE_NUMBER = 8192 * 2; // 支持16384个文件
+static_assert(MAX_FILE_NUMBER % BSIZE == 0);
 
-/*
-desc: [boot] [superblock] [inode-bitmap] [inodes] [block-bitmap] [blocks]
-* zone size(block) , 1024B - per block
-* boot: 1
-* superblock: 1
-* inode-bitmap: 4 (max file number: 32384)
-* block-bitmap: 64 (max file blcok: 524288)
-*/
-#define IMAP_START   2
-#define IMAP_SIZE    4
-#define INODES_START (IMAP_SIZE + IMAP_START)
+constexpr u32 DATA_BLOCK_NUMBER = 1024 * 1024; // 支持2^20*BSIZE的文件内容数据区 (BSIZE=1024 ~ 1GB文件内容区)
+static_assert(DATA_BLOCK_NUMBER % BSIZE == 0);
+//*
 
-#define NDINODE (BSIZE * 32UL)
-#define NBLOCK  (BSIZE * 1024UL)
+constexpr u32 SB_START_BLOCKNO = 1;
+constexpr u32 IMAP_START_BLOCKNO = 2;
+constexpr u32 IMAP_SIZE = MAX_FILE_NUMBER / 8;
+constexpr u32 IMAP_BLOCKNUM = IMAP_SIZE / BSIZE;
 
-char imap[NDINODE / 8]{};
-char bmap[NBLOCK / 8]{};
-char block[BSIZE]{};
-
+constexpr u32 DINODES_START_BLOCKNO = IMAP_START_BLOCKNO + IMAP_BLOCKNUM;
 struct __attribute__((aligned(BSIZE))) {
-  struct dinode dinodes[sizeof(struct dinode) * NDINODE];
-} dinodes{};
+  struct dinode dinodes[MAX_FILE_NUMBER];
+} DINODES{};
+constexpr u32 DINODES_SIZE = sizeof(DINODES);
+constexpr u32 DINODES_BLOCKNUM = DINODES_SIZE / BSIZE;
 
-const u64 BLOCK_START = (2UL + IMAP_SIZE + sizeof(dinodes) / BSIZE + sizeof(bmap) / BSIZE);
+constexpr u32 BMAP_START_BLOCKNO = DINODES_START_BLOCKNO + DINODES_BLOCKNUM;
+constexpr u32 BMAP_SIZE = DATA_BLOCK_NUMBER / 8;
+constexpr u32 BMAP_BLOCKNUM = BMAP_SIZE / BSIZE;
 
+constexpr u32 MIN_DATA_BLOCKNO = BMAP_START_BLOCKNO + BMAP_BLOCKNUM;
+constexpr u32 MAX_DATA_BLOCKNO = MIN_DATA_BLOCKNO + DATA_BLOCK_NUMBER;
 
-u32 free_i = 1; // imap中首个0的比特位索引  inum==0保留给根目录
-u32 free_b = 0; // bmap中首个0的比特位索引
+constexpr u64 IMAGE_SIZE = BSIZE + BSIZE + IMAP_SIZE + BMAP_SIZE + DINODES_SIZE + DATA_BLOCK_NUMBER * BSIZE;
 
-static inline struct dinode*
-bit_to_inode(u32 idx)
-{
-  return (struct dinode*)&dinodes + idx;
-}
+u32 free_inum = 0;
+u32 free_blockno = MIN_DATA_BLOCKNO;
+int disk_fd = -1;
 
-
-// desc: 返回一个空闲的dinode节点和其inode编号,并将其在imap中对应的比特位设置为1
-static inline pair<struct dinode*, u32>
-alloc_dinode()
-{
-  if (free_i > NDINODE - 1) {
-    printf("dinode exhausted\n");
-    exit(1);
-  }
-
-  u32 index = free_i / 32;
-  u32 bit = free_i % 32;
-
-  u32* addr = (u32*)imap + index * 4;
-  *addr |= 1 << bit;
-
-  struct dinode* r = bit_to_inode(free_i);
-  return { r, free_i++ };
-}
-
-/*
-  返回一个空闲block的块号,并将其在bmap中对应的比特位设置为1
-*/
-static inline u64
-alloc_block_num()
-{
-  if (free_b >= NBLOCK - 1) {
-    printf("block exhausted\n");
-    exit(1);
-  }
-  u32 index = free_b / 32;
-  u32 bit = free_b % 32;
-
-  u32* addr = (u32*)&bmap + index * 4;
-  *addr |= 1 << bit;
-
-  return BLOCK_START + free_b++;
-}
+u8 imap[IMAP_SIZE]{};
+u8 bmap[BMAP_SIZE]{};
 
 
+struct dinode* dinode_alloc(void);
+u32 block_alloc(void);
 
-int fs_fd; // fs.img句柄
-#define err strerror(errno)
+u32 reg_meta_copy(struct dirent* d);
+void reg_data_copy(struct dirent* d, u32 inum);
+void dentry_name_copy(struct dentry* d, const char* name);
+u32 directory_copy(const char* path, u32 pinum, bool root = false);
+
+void superblock_write(void);
+void dinode_bitmap_write(void);
+void dinodes_write(void);
+void block_bitmap_write(void);
 
 int
 main(int argc, char* argv[])
 {
   if (argc != 2) {
-    printf("usage error\n");
-    return 1;
-  }
-  const char* rdir = argv[1];
-
-  fs_fd = open("fs.img", O_CREAT | O_RDWR | O_TRUNC, 0666);
-  if (fs_fd < 0) {
-    perror("open fs.img fail:");
-    return 1;
+    printf("Usage: mkfs {root dir path}\n");
+    exit(1);
   }
 
-  int r;
-  r = ftruncate(fs_fd, 1024 * 1024 * 1024 * 1.5);
-  if (r < 0) {
-    perror("ftruncate fail:");
-    return 1;
+  disk_fd = open("fs.img", O_CREAT | O_RDWR | O_TRUNC, 0666);
+  if (disk_fd < 0) {
+    perror("Failed to open fs.img: ");
+    exit(1);
   }
+  ftruncate64(disk_fd, IMAGE_SIZE);
 
-  // 写入超级块
-  lseek(fs_fd, BSIZE, SEEK_SET);
-  struct superblock sb = { .imap = IMAP_START, .inodes = INODES_START, .name = "tsunami" };
-  sb.bmap = sb.inodes + sizeof(dinodes) / BSIZE;
-  sb.blocks = sb.bmap + sizeof(bmap) / BSIZE;
-  sb.max_inode = NDINODE - 1;
-  sb.max_nblock = NBLOCK + BLOCK_START - 1;
-  sb.dev = ROOTDEV;
-  r = write(fs_fd, &sb, sizeof(sb));
-  if (r != sizeof(sb)) {
-    perror("write superblock fail:");
-    return 1;
-  }
+  superblock_write();
+  directory_copy(argv[1], -1, true);
+  dinode_bitmap_write();
+  dinodes_write();
+  block_bitmap_write();
 
-  copy(rdir, -1, true);
-
-  lseek(fs_fd, 2 * BSIZE, SEEK_SET);
-  if (write(fs_fd, imap, sizeof(imap)) != sizeof(imap)) {
-    printf("write imap fail %s\n", err);
-    return 1;
-  }
-  if (write(fs_fd, &dinodes, sizeof(dinodes)) != sizeof(dinodes)) {
-    printf("write dinodes fail %s\n", err);
-    return 1;
-  }
-  if (write(fs_fd, bmap, sizeof(bmap)) != sizeof(bmap)) {
-    printf("write bmap fail %s\n", err);
-    return 1;
-  }
-
-  close(fs_fd);
-
-  printf("\033[0m\033[1;35m| mkfs done\n \033[0m");
-  printf("\033[0m\033[1;35m| BSIZE:1024B\n \033[0m");
-  printf("\033[0m\033[1;35m| bootblock size:1024B\n \033[0m");
-  printf("\033[0m\033[1;35m| superblock size:1024B\n \033[0m");
-  printf("\033[0m\033[1;35m| imap size:%uB\n \033[0m", BSIZE * IMAP_SIZE);
-  printf("\033[0m\033[1;35m| bmap size:%luB\n \033[0m", sizeof(bmap));
-  printf("\033[0m\033[1;35m| inodes size:%luB\n \033[0m", sizeof(dinodes));
-  printf("\033[0m\033[1;35m| blocks size:%luB\n \033[0m", NBLOCK * BSIZE);
-  printf("\033[0m\033[1;35m| total size:%lfGB\n \033[0m",
-         (double)(BSIZE * 3 + sizeof(bmap) + sizeof(imap) + sizeof(dinodes) + NBLOCK * BSIZE) / 1024 / 1024 / 1024);
-
-  printf("\033[0m\033[1;35m| inode num:%lu -- max_i:%lu\n \033[0m", NDINODE, NDINODE - 1);
-  printf("\033[0m\033[1;35m| block num:%lu -- max_b:%lu\n \033[0m", NBLOCK, NBLOCK + BLOCK_START - 1);
-  printf("\033[0m\033[1;35m| imap:%u\n \033[0m", IMAP_START);
-  printf("\033[0m\033[1;35m| inodes:%u\n \033[0m", sb.inodes);
-  printf("\033[0m\033[1;35m| bmap:%u\n \033[0m", sb.bmap);
-  printf("\033[0m\033[1;35m| blocks:%u\n \033[0m", sb.blocks);
-
+  close(disk_fd);
   return 0;
 }
 
+void
+superblock_write(void)
+{
+  struct superblock sb = {
+    .dev = 0,
+    .imap = IMAP_START_BLOCKNO,
+    .inodes = DINODES_START_BLOCKNO,
+    .bmap = BMAP_START_BLOCKNO,
+    .blocks = MIN_DATA_BLOCKNO,
+    .max_inode = MAX_FILE_NUMBER - 1,
+    .max_nblock = MAX_DATA_BLOCKNO,
+    .name = "tsunami",
+  };
+
+  lseek(disk_fd, SB_START_BLOCKNO * BSIZE, SEEK_SET);
+  write(disk_fd, &sb, sizeof(sb));
+}
+void
+dinode_bitmap_write()
+{
+  lseek(disk_fd, IMAP_START_BLOCKNO * BSIZE, SEEK_SET);
+  write(disk_fd, imap, IMAP_SIZE);
+}
+void
+dinodes_write()
+{
+  lseek(disk_fd, DINODES_START_BLOCKNO * BSIZE, SEEK_SET);
+  write(disk_fd, &DINODES, sizeof(DINODES));
+}
+void
+block_bitmap_write()
+{
+  lseek(disk_fd, BMAP_START_BLOCKNO * BSIZE, SEEK_SET);
+  write(disk_fd, bmap, BMAP_SIZE);
+}
+
+struct dinode*
+dinode_alloc(void)
+{
+  if (free_inum > MAX_FILE_NUMBER - 1) {
+    printf("file too much\n");
+    exit(1);
+  }
+
+  struct dinode* r = DINODES.dinodes + free_inum;
+
+  u32 byte_off = free_inum / 8;
+  u8 bit_off = free_inum % 8;
+  imap[byte_off] |= (1U << bit_off);
+
+  ++free_inum;
+  return r;
+}
+u32
+block_alloc(void)
+{
+  if (free_blockno > MAX_DATA_BLOCKNO) {
+    printf("file too big\n");
+    exit(1);
+  }
+
+  u32 r = free_blockno;
+
+  u32 byte_off = (free_blockno - MIN_DATA_BLOCKNO) / 8;
+  u8 bit_off = (free_blockno - MIN_DATA_BLOCKNO) % 8;
+  bmap[byte_off] |= (1U << bit_off);
+
+  ++free_blockno;
+  return r;
+}
 
 u32
-copy(const char* dirpath, u32 pinode, bool root)
+reg_meta_copy(struct dirent* d)
 {
-  DIR* dir = opendir(dirpath);
-
-  if (dir == NULL) {
-    printf("open directory %s fail: %s\n", dirpath, err);
+  if (d->d_type != DT_REG) {
+    printf("%s only support regular file\n", __func__);
     exit(1);
   }
+  int fd = open(d->d_name, O_RDONLY);
+  struct dinode* di = dinode_alloc();
+  struct stat fs;
+  fstat(fd, &fs);
+  di->fsize = fs.st_size;
+  di->nlink = 1;
+  di->type = REGULAR;
 
-  if (chdir(dirpath) < 0) {
-    printf("chdir to %s fail: %s\n", dirpath, err);
-    exit(1);
+  int i = 0;
+  while (i < NDIRECT && fs.st_size > 0) {
+    di->iblock[i] = block_alloc();
+    ++i;
+    fs.st_size -= BSIZE;
   }
 
-  fimap maps;
-  child_dir cds;
+  i = 0;
+  while (i < NIDIRECT && fs.st_size > 0) {
+    di->iblock[i + NDIRECT] = block_alloc();
+    u32 indirect_index_block[BSIZE / sizeof(u32)] = { 0 };
+    for (int j = 0; j < sizeof(indirect_index_block) / sizeof(u32) && fs.st_size > 0; ++j) {
+      indirect_index_block[j] = block_alloc();
+      fs.st_size -= BSIZE;
+    }
+    lseek(disk_fd, di->iblock[i + NDIRECT] * BSIZE, SEEK_SET);
+    write(disk_fd, indirect_index_block, sizeof(indirect_index_block));
+    ++i;
+  }
 
-  struct dirent* entry;
-  while ((entry = readdir(dir))) {
-    // 1.处理非目录文件
-    if (entry->d_type == DT_DIR) {
-      if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
-        cds.push_back(entry->d_name);
-    } else {
-      int fd = open(entry->d_name, O_RDONLY);
-      if (fd < 0) {
-        printf("open file %s fail: %s\n", entry->d_name, err);
-        exit(1);
-      }
+  if (fs.st_size > 0) {
+    printf("File %s too big\n", d->d_name);
+    exit(0);
+  }
 
+  close(fd);
+  return di - DINODES.dinodes;
+}
+void
+reg_data_copy(struct dirent* d, u32 inum)
+{
+  if (d->d_type != DT_REG) {
+    printf("%s only support regular file\n", __func__);
+    exit(1);
+  }
+  struct dinode* di = DINODES.dinodes + inum;
+  char buf[BSIZE] = { 0 };
+  int fd = open(d->d_name, O_RDONLY);
 
-      auto [di, inum] = alloc_dinode();
-      di->type = REGULAR;
-      maps[entry->d_name] = inum;
+  for (int i = 0; i < NDIRECT && di->iblock[i] > 0; ++i) {
+    lseek(disk_fd, di->iblock[i] * BSIZE, SEEK_SET);
+    read(fd, buf, BSIZE);
+    write(disk_fd, buf, BSIZE);
+  }
 
-      ssize_t n;
-      int i = 0;
-      while ((n = read(fd, block, BSIZE)) > 0) {
-        di->fsize += n;
-        di->iblock[i] = alloc_block_num();
-
-        lseek(fs_fd, di->iblock[i] * BSIZE, SEEK_SET);
-        if (write(fs_fd, block, BSIZE) != BSIZE) {
-          perror("write fs.img fail:");
-          exit(1);
-        }
-        ++i;
-      }
-      if (n < 0) {
-        printf("read file %s fail: %s\n", entry->d_name, err);
-        exit(1);
-      }
-      close(fd);
+  for (int i = 0; i < NIDIRECT && di->iblock[i + NDIRECT] > 0; ++i) {
+    u32 idx[BSIZE / sizeof(u32)] = { 0 };
+    lseek(disk_fd, di->iblock[i + NDIRECT] * BSIZE, SEEK_SET);
+    read(disk_fd, idx, sizeof(idx));
+    for (int j = 0; j < sizeof(idx) / sizeof(u32) && idx[j] > 0; ++j) {
+      lseek(disk_fd, idx[j] * BSIZE, SEEK_SET);
+      read(fd, buf, BSIZE);
+      write(disk_fd, buf, BSIZE);
     }
   }
 
+  close(fd);
+}
+u32
+directory_copy(const char* path, u32 pinum, bool root)
+{
+  DIR* dir = opendir(path);
+  chdir(path);
 
-  // 2.处理.目录
-  char block[BSIZE]{};
-  struct dinode* di;
-  u32 inum;
-  if (root) {
-    inum = 0;
-    di = &dinodes.dinodes[0];
-    imap[0] |= 1;
-  } else {
-    auto [x, y] = alloc_dinode();
-    di = x, inum = y;
-  }
+  queue<string> child_dirs;
+  queue<pair<string, u32> > namei;
+
+  struct dinode* di = dinode_alloc();
+  u32 inum = di - DINODES.dinodes;
   di->type = DIRECTORY;
-  di->fsize = BSIZE;
-  di->iblock[0] = alloc_block_num();
+  di->nlink = 2; // 目录文件不允许创建硬链接,.和..是例外
 
-  // i. 写入 . 项
+  u32 entry_cnt = 0;
+  struct dirent* entry;
+  while ((entry = readdir(dir))) {
+    if (strlen(entry->d_name) > DLENGTH) {
+      printf("%s name too long\n", entry->d_name);
+      exit(1);
+    }
+    ++entry_cnt;
+    if (entry->d_type == DT_REG) {
+      u32 inum = reg_meta_copy(entry);
+      reg_data_copy(entry, inum);
+      namei.push({ entry->d_name, inum });
+    }
+    if (entry->d_type == DT_DIR) {
+      if (string(entry->d_name) != "." && string(entry->d_name) != "..") {
+        child_dirs.push(entry->d_name);
+        ++di->nlink;
+      }
+    }
+  }
+
+  di->fsize = entry_cnt * sizeof(struct dentry);
+  long dsize = di->fsize;
   int i = 0;
-  memset(block + i, '\0', sizeof(struct dentry));
-  memcpy(block + i, &inum, 4);
-  memcpy(block + i + 4, ".", 1);
-  i += sizeof(struct dentry);
-
-  // ii. 写入 .. 项
-  memset(block + i, '\0', sizeof(struct dentry));
-  if (root)
-    memcpy(block + i, &inum, 4);
-  else
-    memcpy(block + i, &pinode, 4);
-  memcpy(block + i + 4, "..", 2);
-  i += sizeof(struct dentry);
-
-  // iii. 写入子目录目录项
-  for (auto& cd : cds) {
-    u32 cinode = copy(cd.c_str(), inum);
-    memset(block + i, '\0', sizeof(struct dentry));
-    memcpy(block + i, &cinode, 4);
-    memcpy(block + i + 4, cd.c_str(), cd.length());
-    i += sizeof(struct dentry);
+  while (i < NDIRECT && dsize > 0) {
+    di->iblock[i] = block_alloc();
+    ++i;
+    dsize -= BSIZE;
+  }
+  i = 0;
+  while (i < NIDIRECT && dsize > 0) {
+    di->iblock[i + NDIRECT] = block_alloc();
+    u32 indirect_index_block[BSIZE / sizeof(u32)] = { 0 };
+    for (int j = 0; j < sizeof(indirect_index_block) / sizeof(u32) && dsize > 0; ++j) {
+      indirect_index_block[j] = block_alloc();
+      dsize -= BSIZE;
+    }
+    lseek(disk_fd, di->iblock[i + NDIRECT] * BSIZE, SEEK_SET);
+    write(disk_fd, indirect_index_block, sizeof(indirect_index_block));
+    ++i;
   }
 
-  // vi. 写入普通目录项
-  for (auto& [fname, inode] : maps) {
-    memset(block + i, '\0', sizeof(struct dentry));
-    memcpy(block + i, &inode, 4);
-    memcpy(block + i + 4, fname.c_str(), fname.length());
-    i += sizeof(struct dentry);
-  }
-  lseek(fs_fd, di->iblock[0] * BSIZE, SEEK_SET);
-  if (write(fs_fd, block, BSIZE) != BSIZE) {
-    printf("write . dir fail: %s\n", err);
+  if (dsize > 0) {
+    printf("Directory %s too big\n", path);
     exit(1);
   }
-  closedir(dir);
+
+  for (int i = 0; i < NDIRECT && di->iblock[i] > 0; ++i) {
+    struct dentry dts[BSIZE / sizeof(dentry)] = { 0 };
+    int j = 0;
+    if (i == 0) [[unlikely]] {
+      struct dentry s = { .inum = inum, .name = "." };
+      struct dentry p = { .inum = root ? inum : pinum, .name = ".." };
+      memcpy(dts + j++, &s, sizeof(s));
+      memcpy(dts + j++, &p, sizeof(p));
+    }
+    while (j < sizeof(dts) / sizeof(dentry) && !child_dirs.empty()) {
+      struct dentry c;
+      c.inum = directory_copy(child_dirs.front().c_str(), inum);
+      dentry_name_copy(&c, child_dirs.front().c_str());
+      child_dirs.pop();
+      memcpy(dts + j++, &c, sizeof(c));
+    }
+
+    while (j < sizeof(dts) / sizeof(dentry) && !namei.empty()) {
+      struct dentry c;
+      c.inum = namei.front().second;
+      dentry_name_copy(&c, namei.front().first.c_str());
+      namei.pop();
+      memcpy(dts + j++, &c, sizeof(c));
+    }
+
+    lseek(disk_fd, di->iblock[i] * BSIZE, SEEK_SET);
+    write(disk_fd, dts, sizeof(dts));
+  }
+
+  for (int i = 0; i < NIDIRECT && di->iblock[i + NDIRECT] > 0; ++i) {
+    u32 idx[BSIZE / sizeof(u32)] = { 0 };
+    lseek(disk_fd, di->iblock[i + NDIRECT] * BSIZE, SEEK_SET);
+    read(disk_fd, idx, sizeof(idx));
+    for (int j = 0; j < sizeof(idx) / sizeof(u32) && idx[j] > 0; ++j) {
+      struct dentry dts[BSIZE / sizeof(dentry)] = { 0 };
+      int k = 0;
+      while (k < sizeof(dts) / sizeof(dentry) && !child_dirs.empty()) {
+        struct dentry c;
+        c.inum = directory_copy(child_dirs.front().c_str(), inum);
+        dentry_name_copy(&c, child_dirs.front().c_str());
+        child_dirs.pop();
+        memcpy(dts + k++, &c, sizeof(c));
+      }
+
+      while (k < sizeof(dts) / sizeof(dentry) && !namei.empty()) {
+        struct dentry c;
+        c.inum = namei.front().second;
+        dentry_name_copy(&c, namei.front().first.c_str());
+        namei.pop();
+        memcpy(dts + k++, &c, sizeof(c));
+      }
+
+      lseek(disk_fd, idx[j] * BSIZE, SEEK_SET);
+      write(disk_fd, dts, sizeof(dts));
+    }
+  }
 
   chdir("..");
+  closedir(dir);
   return inum;
 }
 
-/*
-目录文件格式:
-  4B  |    16B   |
-inode | filename  ~20B
-inode | filename  ~20B
-inode | filename  ~20B
-inode | filename  ~20B
-inode | filename  ~20B
-
-为简单处理,目录只允许分配一个内容块,即一个目录下最多允许51个文件
-*/
+void
+dentry_name_copy(struct dentry* d, const char* name)
+{
+  memset(d->name, 0, DLENGTH);
+  memcpy(d->name, name, strlen(name));
+}
