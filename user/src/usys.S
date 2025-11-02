@@ -1,7 +1,6 @@
 #define AS
 #include "kernel/syscall/syscall.h"
 
-.section .init.text
 .global fork
 fork:
   li a7, SYS_FORK

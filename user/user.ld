@@ -10,12 +10,12 @@ PHDRS
 
 SECTIONS
 {
- . = 0x1000;
- 
+  . = 0x1000;
   .text : {
     *(.text .text.*)
   } :text
 
+  . = ALIGN(0x1000);
   .rodata : {
     . = ALIGN(16);
     *(.srodata .srodata.*) 

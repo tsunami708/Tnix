@@ -134,7 +134,7 @@ static struct disk {
   // for use when completion interrupt arrives.
   // indexed by first descriptor index of chain.
   struct {
-    struct iobuf* b;
+    struct buf* b;
     char status;
   } info[NUM];
 
@@ -217,9 +217,9 @@ virtio_disk_init(void)
     panic("virtio disk alloc_page");
 
   //! modified
-  memset1(disk.desc, 0, PGSIZE);
-  memset1(disk.avail, 0, PGSIZE);
-  memset1(disk.used, 0, PGSIZE);
+  memset(disk.desc, 0, PGSIZE);
+  memset(disk.avail, 0, PGSIZE);
+  memset(disk.used, 0, PGSIZE);
   //!
 
   // set queue size.
@@ -308,7 +308,7 @@ alloc3_desc(int* idx)
 }
 
 void
-virtio_disk_rw(struct iobuf* b, int write)
+virtio_disk_rw(struct buf* b, int write)
 {
   u64 sector = b->blockno * (BSIZE / 512);
 
@@ -359,7 +359,7 @@ virtio_disk_rw(struct iobuf* b, int write)
   disk.desc[idx[2]].flags = VRING_DESC_F_WRITE; // device writes the status
   disk.desc[idx[2]].next = 0;
 
-  // record struct iobuf for virtio_disk_intr().
+  // record struct buf for virtio_disk_intr().
   b->disk = 1;
   disk.info[idx[0]].b = b;
 
@@ -413,7 +413,7 @@ virtio_disk_intr(void)
     if (disk.info[id].status != 0)
       panic("virtio_disk_intr status");
 
-    struct iobuf* b = disk.info[id].b;
+    struct buf* b = disk.info[id].b;
     b->disk = 0; // disk is done with buf
     wakeup(b);
 
@@ -432,13 +432,13 @@ init_disk(void)
 }
 
 void
-disk_read(struct iobuf* buf)
+disk_read(struct buf* buf)
 {
   virtio_disk_rw(buf, 0);
 }
 
 void
-disk_write(struct iobuf* buf)
+disk_write(struct buf* buf)
 {
   virtio_disk_rw(buf, 1);
 }

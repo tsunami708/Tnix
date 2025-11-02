@@ -37,7 +37,7 @@ alloc_page()
   p->inuse = true;
   list_remove(pages_head.next);
   release_spin(&mem_spin);
-  memset1((void*)p->paddr, 0, PGSIZE);
+  memset((void*)p->paddr, 0, PGSIZE);
   return p;
 }
 

@@ -2,6 +2,9 @@
 #include "task/task.h"
 #include "task/cpu.h"
 #include "util/printf.h"
+#include "fs/elf.h"
+#include "fs/inode.h"
+#include "fs/dir.h"
 extern struct task task_queue[NPROC];
 
 extern char trampoline[];
@@ -22,6 +25,10 @@ first_sched(void)
     first = false;
     __sync_synchronize();
     fsinit();
+    struct inode* f = dlookup("/bin/init");
+    struct elfhdr eh;
+    if (read_elfhdr(f, &eh))
+      load_segment(f, &eh, t);
   }
 
   cli();

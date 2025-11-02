@@ -1,27 +1,28 @@
 #pragma once
-#
+
 #ifndef MKFS
 #include "config.h"
 #include "util/types.h"
 struct inode;
-struct iobuf;
+struct buf;
 struct superblock;
 
-void read_superblock(dev_t dev, struct superblock* sb);
+#define IDX_COUNT_PER_INDIRECT_BLCOK (BSIZE / sizeof(u32))
 
-struct iobuf* read_imap(struct superblock* sb, u32 i);
-struct iobuf* read_bmap(struct superblock* sb, u32 i);
+void read_superblock(dev_t dev, struct superblock* sb);
+struct buf* read_imap(struct superblock* sb, u32 i);
+struct buf* read_bmap(struct superblock* sb, u32 i);
 
 u32 alloc_block(struct superblock* sb);
 void free_block(struct superblock* sb, u32 blockno);
 #else
+typedef unsigned char u8;
 typedef unsigned int u32;
 typedef unsigned long u64;
 #define BSIZE    1024
 #define NDIRECT  12
-#define ROOTDEV  0
-#define ROOTINUM 0
-#define DLENGTH  16
+#define NIDIRECT 3
+#define DLENGTH  28
 #endif
 
 
@@ -41,8 +42,8 @@ struct superblock {
   u32 inodes;
   u32 bmap;
   u32 blocks;
-  u32 max_inode;
-  u32 max_nblock;
+  u32 max_inum;
+  u32 max_blockno;
   char name[8];
 };
 
@@ -52,5 +53,5 @@ struct dinode {
 
   u32 nlink;
   u32 fsize;
-  u32 iblock[NDIRECT];
+  u32 iblock[NDIRECT + NIDIRECT];
 };

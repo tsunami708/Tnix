@@ -7,12 +7,14 @@
 __attribute__((section(".init.text"))) void
 systemd_main(void)
 {
-  int r = fork1();
-  if (r == 0)
-    exit1(1);
+  int r = fork();
+  if (r == 0) {
+    exec("/bin/sh", 0);
+  }
+  // exit(1);
   else if (r > 0) {
     int status;
-    u16 pid = wait1(&status);
+    u16 pid = wait(&status);
     (void)pid;
     while (1)
       ;

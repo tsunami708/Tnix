@@ -100,8 +100,8 @@ superblock_write(void)
     .inodes = DINODES_START_BLOCKNO,
     .bmap = BMAP_START_BLOCKNO,
     .blocks = MIN_DATA_BLOCKNO,
-    .max_inode = MAX_FILE_NUMBER - 1,
-    .max_nblock = MAX_DATA_BLOCKNO,
+    .max_inum = MAX_FILE_NUMBER - 1,
+    .max_blockno = MAX_DATA_BLOCKNO,
     .name = "tsunami",
   };
 

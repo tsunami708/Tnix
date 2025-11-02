@@ -1,7 +1,7 @@
 #include "util/string.h"
 
 void*
-memset1(void* dst, int c, u32 n)
+memset(void* dst, int c, u32 n)
 {
   char* cdst = (char*)dst;
   int i;
@@ -34,13 +34,13 @@ memmove(void* dst, const void* src, u32 n)
 }
 
 void*
-memcpy1(void* dst, const void* src, u32 n)
+memcpy(void* dst, const void* src, u32 n)
 {
   return memmove(dst, src, n);
 }
 
 int
-strncmp1(const char* p, const char* q, u32 n)
+strncmp(const char* p, const char* q, u32 n)
 {
   while (n > 0 && *p && *p == *q)
     n--, p++, q++;
@@ -50,7 +50,7 @@ strncmp1(const char* p, const char* q, u32 n)
 }
 
 char*
-strncpy1(char* s, const char* t, int n)
+strncpy(char* s, const char* t, int n)
 {
   char* os;
   os = s;
@@ -63,7 +63,7 @@ strncpy1(char* s, const char* t, int n)
 
 
 int
-strlen1(const char* s)
+strlen(const char* s)
 {
   int n;
   for (n = 0; s[n]; n++)

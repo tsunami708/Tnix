@@ -4,6 +4,6 @@ char uart_get(void);
 void uart_put_syn(char c);
 
 
-struct iobuf;
-void disk_read(struct iobuf* buf);
-void disk_write(struct iobuf* buf);
+struct buf;
+void disk_read(struct buf* buf);
+void disk_write(struct buf* buf);

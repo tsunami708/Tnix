@@ -7,3 +7,4 @@
 kernel/kernel
 fs.img
 mkfs/mkfs
+user/bin

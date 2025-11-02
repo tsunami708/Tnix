@@ -101,7 +101,7 @@ copy_pagetable(struct task* c, struct task* p)
     else {
       struct page* page = alloc_page();
       list_pushback(&c->pages, &page->page_node);
-      memcpy1((void*)page->paddr, (void*)pvm->pa, PGSIZE);
+      memcpy((void*)page->paddr, (void*)pvm->pa, PGSIZE);
       task_vmmap(c, pvm->va, pha(page), pvm->len, pvm->attr, pvm->gra);
     }
     ++pvm;
@@ -200,7 +200,7 @@ copy_to_user(void* udst, const void* ksrc, u32 bytes)
   if (start != 0 && end != 0) {
     if (((*spte) & (PTE_U | PTE_W)) == (PTE_U | PTE_W)) {
       if (spte == epte) { // 不跨页
-        memcpy1((void*)start, ksrc, bytes);
+        memcpy((void*)start, ksrc, bytes);
         return true;
       } else { // 跨页
         if (((*epte) & (PTE_U | PTE_W)) == (PTE_U | PTE_W)) {

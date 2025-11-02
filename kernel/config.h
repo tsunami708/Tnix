@@ -37,9 +37,10 @@
 // 文件系统属性
 #define BSIZE    1024
 #define NDIRECT  12
+#define NIDIRECT 3
 #define ROOTDEV  0
 #define ROOTINUM 0
-#define DLENGTH  16 // 目录项名长度
+#define DLENGTH  28 // 目录项名长度
 #define NFILE    16 // 进程文件打开最大数
 #define NIOBUF   16 // IO缓存块最大数
 #define NINODE   50 // ionode缓存最大数

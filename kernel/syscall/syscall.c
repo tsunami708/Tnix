@@ -35,7 +35,7 @@ sys_fork(struct pt_regs*)
   struct task* p = mytask();
   struct task* c = alloc_task(p);
   list_pushback(&p->childs, &c->self);
-  memcpy1((void*)c->kstack - PGSIZE, (void*)p->kstack - PGSIZE, PGSIZE);
+  memcpy((void*)c->kstack - PGSIZE, (void*)p->kstack - PGSIZE, PGSIZE);
   dump_context(&c->ctx);
   if (mytask() == p) {
     u64 sp;
@@ -57,10 +57,10 @@ sys_exit(struct pt_regs* pt)
   struct task* t = mytask();
   t->exit_code = pt->a0;
 
-  put_inode(t->cwd);
+  iput(t->cwd);
 
   for (int i = 0; i < t->files.i; ++i)
-    close_file(&t->files.f[i]);
+    fclose(&t->files.f[i]);
   t->files.i = 0;
 
   t->vmas.nvma = 0;

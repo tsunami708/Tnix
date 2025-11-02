@@ -1,9 +1,7 @@
 #构建工具
 QEMU = qemu-system-riscv64
 CC = riscv64-linux-gnu-gcc
-AS = riscv64-linux-gnu-as
 LD = riscv64-linux-gnu-ld
-OBJCOPY = riscv64-linux-gnu-objcopy
 OBJDUMP = riscv64-linux-gnu-objdump
 
 #编译器属性
@@ -52,6 +50,7 @@ OBJS = \
 	$K/fs/inode.o \
 	$K/fs/dir.o \
 	$K/fs/file.o \
+	$K/fs/elf.o \
 	$K/util/spinlock.o \
 	$K/util/sleeplock.o \
 	$K/util/printf.o \
@@ -64,6 +63,9 @@ OBJS = \
 	$K/syscall/usys.o \
 
 U=user
+PROGS = \
+	$U/bin/init \
+	$U/bin/sh \
 
 $K/kernel: $(OBJS) $K/kernel.ld
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS) 
@@ -73,8 +75,23 @@ $K/kernel: $(OBJS) $K/kernel.ld
 $K/%.o: $K/%.S
 	$(CC) $(CFLAGS) -g -c -o $@ $<
 
+$U/src/usys.o: $U/src/usys.S
+	$(CC) $(CFLAGS) -c -o $@ $< 
+$U/bin/%: $U/src/%.c $U/src/usys.o
+	$(CC) $(CFLAGS) $(LDFLAGS) -T user/user.ld -o $@ $^
 
--include kernel/*.d user/*.d
+
+-include \
+	$K/util/*.d \
+	$K/trap/*.d \
+	$K/task/*.d \
+	$K/syscall/*.d \
+	$K/mem/*.d \
+	$K/fs/*.d \
+	$K/dev/*.d \
+	$K/boot/*.d \
+	$U/src/*.d \
+	$U/bin/*.d \
 
 clean:
 	find . -type f \( \
@@ -82,9 +99,9 @@ clean:
 	-name "*.log" -o -name "*.ind" -o -name "*.ilg" -o \
 	-name "*.o" -o -name "*.d" -o -name "*.asm" -o -name "*.sym" \
 	\) -exec rm -f {} +
-	rm -f $K/kernel *.dtb
+	rm -f $K/kernel $U/bin/* *.dtb
 
-fs.img:
+fs.img: $(PROGS)
 	rm -rf mkfs/mkfs fs.img
 	g++ mkfs/mkfs.cc -o mkfs/mkfs -I. -std=c++17 -g
 	mkfs/mkfs user

@@ -26,7 +26,7 @@ alloc_tid()
 static void
 copy_files(struct task* c, struct task* p)
 {
-  memcpy1(&c->files, &p->files, sizeof(p->files));
+  memcpy(&c->files, &p->files, sizeof(p->files));
 }
 
 static void
@@ -51,7 +51,7 @@ task_init(struct task* t, struct task* parent)
   if (parent) {
     t->parent = parent;
     t->cwd = parent->cwd;
-    get_inode(t->cwd->sb, t->cwd->inum);
+    iget(t->cwd->sb, t->cwd->inum);
     copy_pagetable(t, parent);
     copy_files(t, parent);
   } else {
