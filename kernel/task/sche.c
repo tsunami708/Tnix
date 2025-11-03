@@ -27,8 +27,10 @@ first_sched(void)
     fsinit();
     struct file* f;
     struct elfhdr eh;
-    if ((f = read_elfhdr("/bin/init", &eh)))
+    if ((f = read_elfhdr("/bin/init", &eh))) {
       load_segment(t, f, &eh);
+      t->entry = eh.entry;
+    }
     fclose(f);
   }
 

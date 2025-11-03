@@ -3,9 +3,9 @@ ENTRY( entry )
 
 PHDRS
 {
-  text PT_LOAD FLAGS(5);    /* R + X = 4 + 1 = 5 */
-  rodata PT_LOAD FLAGS(4);  /* R = 4 */
-  data PT_LOAD FLAGS(6);    /* R + W = 4 + 2 = 6 */
+  text PT_LOAD FLAGS(5);    /* R + X */
+  rodata PT_LOAD FLAGS(4);  /* R */
+  data PT_LOAD FLAGS(6);    /* R + W */
 }
 
 SECTIONS
@@ -25,16 +25,6 @@ SECTIONS
     trampoline_start = .;
     *(.text.trampoline)
     ASSERT(. - trampoline_start <= 4096, "Error: trampoline exceeds 4KB");
-  } :text
-
-    /* 仅包含 systemd_main 的代码 */
-  .init : {
-    . = ALIGN(4096);
-    init_start = .;
-    PROVIDE(init = .);
-    *(.init.text)         
-    PROVIDE(einit = .);
-    ASSERT(. - init_start <= 4096, "Error: init exceeds 4KB");
   } :text
 
   .rodata : {

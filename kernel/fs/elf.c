@@ -49,13 +49,13 @@ load_segment(struct task* t, struct file* f, struct elfhdr* eh)
       fread(f, (void*)p->paddr, pg.filesz);
       fseek(f, roff);
 
-      u16 attr = 0;
+      u16 attr = PTE_U;
       if (pg.flags & ELF_PROG_FLAG_READ)
-        attr |= ELF_PROG_FLAG_READ;
+        attr |= PTE_R;
       if (pg.flags & ELF_PROG_FLAG_WRITE)
-        attr |= ELF_PROG_FLAG_WRITE;
+        attr |= PTE_W;
       if (pg.flags & ELF_PROG_FLAG_EXEC)
-        attr |= ELF_PROG_FLAG_EXEC;
+        attr |= PTE_X;
       task_vmmap(t, pg.vaddr, p->paddr, PGSIZE, attr, S_PAGE);
     }
   }
