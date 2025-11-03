@@ -84,6 +84,4 @@ fsinit(void)
 {
   read_superblock(ROOTDEV, &rfs);
   mytask()->cwd = iget(&rfs, ROOTINUM);
-  struct inode* i = dlookup("/bin/init");
-  (void)i;
 }

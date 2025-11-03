@@ -1,19 +1,18 @@
 #include "fs/elf.h"
-#include "fs/bio.h"
-#include "fs/inode.h"
-#include "mem/alloc.h"
+#include "fs/file.h"
 #include "mem/vm.h"
+#include "mem/alloc.h"
 #include "task/task.h"
-#include "util/string.h"
-#include "util/printf.h"
 
-// 读取ELF文件头,并返回是否可执行
-bool
-read_elfhdr(struct inode* f, struct elfhdr* eh)
+// 返回的file由调用者关闭
+struct file*
+read_elfhdr(const char* path, struct elfhdr* eh)
 {
-  // struct buf* b = bread(f->sb->dev, f->di.iblock[0]);
-  // memcpy(eh, b->data, sizeof(struct elfhdr));
-  // brelse(b);
+  struct file* f = falloc();
+  if (!fopen(f, path))
+    return NULL;
+
+  fread(f, eh, sizeof(struct elfhdr));
 
   // 检查是否为ELF文件
   if (*(int*)eh->ident != ELF_MAGIC)
@@ -27,13 +26,37 @@ read_elfhdr(struct inode* f, struct elfhdr* eh)
   if (eh->machine != ELF_RISCV)
     goto not_exec;
 
-  return true;
+  return f;
 not_exec:
-  return false;
+  fclose(f);
+  return NULL;
 }
 
 // 解析ELF程序段表,加载代码段和数据段,并进行页表映射
 void
-load_segment(struct inode* f, struct elfhdr* eh, struct task* t)
+load_segment(struct task* t, struct file* f, struct elfhdr* eh)
 {
+  int seg_cnt = eh->phnum;
+
+  struct proghdr pg;
+  fseek(f, eh->phoff);
+  while (seg_cnt--) {
+    fread(f, &pg, sizeof(pg));
+    if (pg.type == ELF_PROG_LOAD && (pg.filesz > 0 || pg.memsz > 0)) {
+      struct page* p = alloc_page();
+      list_pushback(&t->pages, &p->page_node);
+      int roff = fseek(f, pg.off);
+      fread(f, (void*)p->paddr, pg.filesz);
+      fseek(f, roff);
+
+      u16 attr = 0;
+      if (pg.flags & ELF_PROG_FLAG_READ)
+        attr |= ELF_PROG_FLAG_READ;
+      if (pg.flags & ELF_PROG_FLAG_WRITE)
+        attr |= ELF_PROG_FLAG_WRITE;
+      if (pg.flags & ELF_PROG_FLAG_EXEC)
+        attr |= ELF_PROG_FLAG_EXEC;
+      task_vmmap(t, pg.vaddr, p->paddr, PGSIZE, attr, S_PAGE);
+    }
+  }
 }

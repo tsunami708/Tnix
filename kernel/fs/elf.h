@@ -42,6 +42,6 @@ struct proghdr {
 };
 
 struct task;
-struct inode;
-void load_segment(struct inode* f, struct elfhdr* eh, struct task* t);
-bool read_elfhdr(struct inode* f, struct elfhdr* eh);
+struct file;
+void load_segment(struct task* t, struct file* f, struct elfhdr* eh);
+struct file* read_elfhdr(const char* path, struct elfhdr* eh);

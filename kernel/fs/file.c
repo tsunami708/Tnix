@@ -34,7 +34,12 @@ bool
 fopen(struct file* f, const char* path)
 {
   f->inode = dlookup(path);
-  return f->inode ? (f->size = f->inode->di.fsize, true) : false;
+  if (!f->inode)
+    return false;
+  f->size = f->inode->di.fsize;
+  f->off = 0;
+  f->type = INODE;
+  return true;
 }
 
 void
@@ -97,7 +102,7 @@ fread(struct file* f, void* buf, u32 bytes)
 
   struct buf* b;
   while (pend_bytes > 0) {
-    u32 len = BSIZE - pcur % BSIZE;
+    u32 len = min(BSIZE - pcur % BSIZE, pend_bytes);
     b = bread(f->inode->sb->dev, blockno_of_data(f->inode, pcur));
     memcpy(buf + done_bytes, b->data + pcur % BSIZE, len);
     brelse(b);
@@ -113,5 +118,5 @@ fread(struct file* f, void* buf, u32 bytes)
 u32
 fwrite(struct file* f, const void* buf, u32 bytes)
 {
-  return 0; // TODO:
+  return 0; // ? todo
 }
