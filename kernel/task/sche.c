@@ -92,6 +92,23 @@ wakeup(void* chan)
 }
 
 void
+kill(void)
+{
+  extern void context_switch(struct context * old, struct context * new);
+
+  struct task* t = mytask();
+  t->exit_code = 255;
+
+  clean_source(t);
+
+  t->state = EXIT;
+  wakeup(&t->parent->childs);
+
+  acquire_spin(&t->lock);
+  context_switch(&t->ctx, &mycpu()->ctx);
+}
+
+void
 task_schedule(void)
 {
   while (1) {

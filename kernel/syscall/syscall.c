@@ -57,20 +57,7 @@ sys_exit(struct pt_regs* pt)
   struct task* t = mytask();
   t->exit_code = pt->a0;
 
-  iput(t->cwd);
-
-  for (int i = 0; i < t->files.i; ++i)
-    fclose(&t->files.f[i]);
-  t->files.i = 0;
-
-  t->vmas.nvma = 0;
-
-  struct list_node *cur = t->pages.next, *tmp;
-  while (cur != &t->pages) {
-    tmp = cur->next;
-    free_page(container_of(cur, struct page, page_node));
-    cur = tmp;
-  }
+  clean_source(t);
 
   t->state = EXIT;
   wakeup(&t->parent->childs);

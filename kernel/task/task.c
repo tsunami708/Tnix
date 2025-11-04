@@ -93,3 +93,22 @@ alloc_task(struct task* p)
   }
   panic("task too much");
 }
+
+void
+clean_source(struct task* t)
+{
+  iput(t->cwd);
+
+  for (int i = 0; i < t->files.i; ++i)
+    fclose(&t->files.f[i]);
+  t->files.i = 0;
+
+  t->vmas.nvma = 0;
+
+  struct list_node *cur = t->pages.next, *tmp;
+  while (cur != &t->pages) {
+    tmp = cur->next;
+    free_page(container_of(cur, struct page, page_node));
+    cur = tmp;
+  }
+}

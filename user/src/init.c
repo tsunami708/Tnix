@@ -9,7 +9,8 @@ main(int, char*[])
     // exec("/bin/sh", 0);
     exit(0);
   } else if (pid > 0) {
-    wait(NULL);
+    int status;
+    wait(&status);
   }
   exit(0);
 }

@@ -1,12 +1,10 @@
-#include "config.h"
 #include "mem/alloc.h"
 #include "mem/vm.h"
 #include "util/printf.h"
 #include "util/riscv.h"
-#include "util/list.h"
 #include "util/string.h"
-#include "task/cpu.h"
 #include "task/task.h"
+#include "task/sche.h"
 
 // 2->1->0
 #define va_level(va, level) (((va >> 12) >> (9 * level)) & 0x1FFUL)
@@ -172,7 +170,7 @@ get_pte(pagetable_t ptb, u64 va)
 }
 
 static u64
-va_to_pa(pagetable_t ptb, u64 va, pte_t** p) // TODO: 目前只适用于4KB页
+va_to_pa(pagetable_t ptb, u64 va, pte_t** p) // ?目前只适用于4KB页
 {
   pte_t* pte = get_pte(ptb, va);
 
@@ -191,28 +189,43 @@ va_to_pa(pagetable_t ptb, u64 va, pte_t** p) // TODO: 目前只适用于4KB页
   return (ppn << 12) | offset;
 }
 
-bool
+
+void
 copy_to_user(void* udst, const void* ksrc, u32 bytes)
 {
-  pte_t *spte = NULL, *epte = NULL;
-  u64 start = va_to_pa(mytask()->pagetable, (u64)udst, &spte);
-  u64 end = va_to_pa(mytask()->pagetable, (u64)(bytes + udst) - 1, &epte);
-  if (start != 0 && end != 0) {
-    if (((*spte) & (PTE_U | PTE_W)) == (PTE_U | PTE_W)) {
-      if (spte == epte) { // 不跨页
-        memcpy((void*)start, ksrc, bytes);
-        return true;
-      } else { // 跨页
-        if (((*epte) & (PTE_U | PTE_W)) == (PTE_U | PTE_W)) {
-          // todo:
-        }
-        goto bad;
-      }
-    }
-    goto bad;
+  u32 pend_bytes = bytes;
+  u64 ud = (u64)udst, kd = (u64)ksrc;
+
+  u32 len;
+  pte_t* pte;
+  u64 paddr;
+  while (pend_bytes) {
+    len = min((align_up(ud, PGSIZE) - ud), pend_bytes);
+    paddr = va_to_pa(mytask()->pagetable, ud, &pte);
+    if (paddr == 0 || ((*pte) & (PTE_W | PTE_U)) != (PTE_W | PTE_U))
+      kill();
+    memcpy((void*)paddr, (void*)kd, len);
+    ud += len, kd += len, pend_bytes -= len;
   }
-bad:
-  return false;
+}
+
+void
+copy_from_user(void* kdst, const void* usrc, u32 bytes)
+{
+  u32 pend_bytes = bytes;
+  u64 kd = (u64)kdst, us = (u64)usrc;
+
+  u32 len;
+  pte_t* pte;
+  u64 paddr;
+  while (pend_bytes > 0) {
+    len = min((align_up(us, PGSIZE) - us), pend_bytes);
+    paddr = va_to_pa(mytask()->pagetable, us, &pte);
+    if (paddr == 0 || ((*pte) & (PTE_R | PTE_U)) != (PTE_R | PTE_U))
+      kill();
+    memcpy((void*)kd, (void*)paddr, len);
+    kd += len, us += len, pend_bytes -= len;
+  }
 }
 
 void

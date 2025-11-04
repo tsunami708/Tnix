@@ -70,3 +70,4 @@ struct task {
 };
 
 struct task* alloc_task(struct task* p);
+void clean_source(struct task* t);
