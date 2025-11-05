@@ -29,8 +29,8 @@ extern char end[];
   attr为页设置属性
   gra页粒度
 */
-void
-vmmap(pagetable_t ptb, u64 va, u64 pa, u64 size, u16 attr, i8 gra, struct task* ut)
+static void
+do_vmmap(pagetable_t ptb, u64 va, u64 pa, u64 size, u16 attr, i8 gra, struct task* ut)
 {
   if (va % PGSIZE || pa % PGSIZE)
     panic("vmmap not aligned");
@@ -76,17 +76,59 @@ vmmap(pagetable_t ptb, u64 va, u64 pa, u64 size, u16 attr, i8 gra, struct task* 
   }
 }
 
+void
+svmmap(pagetable_t ptb, u64 va, u64 pa, u64 size, u16 attr, struct task* ut)
+{
+  do_vmmap(ptb, va, pa, size, attr, S_PAGE, ut);
+}
+void
+mvmmap(pagetable_t ptb, u64 va, u64 pa, u64 size, u16 attr)
+{
+  do_vmmap(ptb, va, pa, size, attr, M_PAGE, NULL);
+}
+
 
 //! trampoline,trapframe页的映射直接走vmmap,不使用task_vmmap
 void
-task_vmmap(struct task* t, u64 va, u64 pa, u64 size, u16 attr, i8 gra)
+task_vmmap(struct task* t, u64 va, u64 pa, u64 size, u16 attr, enum vma_type type)
 {
-  vmmap(t->pagetable, va, pa, size, attr, gra, t);
+  do_vmmap(t->pagetable, va, pa, size, attr, S_PAGE, t);
   t->vmas.vmas[t->vmas.nvma].va = va;
   t->vmas.vmas[t->vmas.nvma].pa = pa;
   t->vmas.vmas[t->vmas.nvma].len = size;
   t->vmas.vmas[t->vmas.nvma].attr = attr;
-  t->vmas.vmas[t->vmas.nvma++].gra = gra;
+  t->vmas.vmas[t->vmas.nvma++].type = type;
+}
+
+void
+vmunmap(pagetable_t ptb, u64 va, u64 size) //! 只考虑了4KB的页
+{
+  if (va % PGSIZE)
+    panic("vmunmap not aligned");
+  if (va + size > VA_TOP)
+    panic("out of range");
+
+  u64 bound = align_up(va + size, PGSIZE);
+  for (; va < bound; va += PGSIZE) {
+    pte_t *cur = (pte_t*)ptb, *pte;
+    i8 level;
+
+    for (level = 2; level >= 0; --level) {
+      u64 vpn = va_level(va, level);
+      pte = &cur[vpn];
+
+      if (!(*pte & PTE_V))
+        break;
+
+      if (level == 0) {
+        *pte = 0;
+        break;
+      }
+      cur = (pte_t*)((*pte >> 10) << 12);
+    }
+  }
+
+  asm volatile("sfence.vma zero, zero");
 }
 
 void
@@ -95,12 +137,12 @@ copy_pagetable(struct task* c, struct task* p)
   struct vma* pvm = &p->vmas.vmas[0];
   while (pvm->pa > 0) {
     if ((pvm->attr & PTE_W) == 0)
-      task_vmmap(c, pvm->va, pvm->pa, pvm->len, pvm->attr, pvm->gra);
+      task_vmmap(c, pvm->va, pvm->pa, pvm->len, pvm->attr, pvm->type);
     else {
       struct page* page = alloc_page();
       list_pushback(&c->pages, &page->page_node);
       memcpy((void*)page->paddr, (void*)pvm->pa, PGSIZE);
-      task_vmmap(c, pvm->va, pha(page), pvm->len, pvm->attr, pvm->gra);
+      task_vmmap(c, pvm->va, pha(page), pvm->len, pvm->attr, pvm->type);
     }
     ++pvm;
   }
@@ -169,7 +211,7 @@ get_pte(pagetable_t ptb, u64 va)
   return NULL;
 }
 
-static u64
+u64
 va_to_pa(pagetable_t ptb, u64 va, pte_t** p) // ?目前只适用于4KB页
 {
   pte_t* pte = get_pte(ptb, va);
@@ -233,29 +275,26 @@ init_page(void)
 {
   if (cpuid() == 0) {
     kernel_pgt = (pagetable_t)pha(alloc_page());
-    vmmap(kernel_pgt, CLINT, CLINT, CLINT_SIZE, PTE_R | PTE_W, S_PAGE, NULL);
-    vmmap(kernel_pgt, PLIC, PLIC, PLIC_SIZE, PTE_R | PTE_W, S_PAGE, NULL);
-    vmmap(kernel_pgt, UART0, UART0, UART0_SIZE, PTE_R | PTE_W, S_PAGE, NULL);
-    vmmap(kernel_pgt, VIRIO, VIRIO, VIRIO_SIZE, PTE_R | PTE_W, S_PAGE, NULL);
-    vmmap(kernel_pgt, KBASE, KBASE, KCODE_SIZE, PTE_R | PTE_X, S_PAGE, NULL);
-
-    vmmap(kernel_pgt, (u64)trampoline, (u64)trampoline, PGSIZE, PTE_R | PTE_X, S_PAGE, NULL);
-    vmmap(kernel_pgt, TRAMPOLINE, (u64)trampoline, PGSIZE, PTE_R | PTE_X, S_PAGE, NULL);
-
-
-    vmmap(kernel_pgt, KRODATA, KRODATA, KRODATA_SIZE, PTE_R, S_PAGE, NULL);
-    vmmap(kernel_pgt, KDATA, KDATA, KDATA_SIZE, PTE_R | PTE_W, S_PAGE, NULL);
+    svmmap(kernel_pgt, CLINT, CLINT, CLINT_SIZE, PTE_R | PTE_W, NULL);
+    svmmap(kernel_pgt, PLIC, PLIC, PLIC_SIZE, PTE_R | PTE_W, NULL);
+    svmmap(kernel_pgt, UART0, UART0, UART0_SIZE, PTE_R | PTE_W, NULL);
+    svmmap(kernel_pgt, VIRIO, VIRIO, VIRIO_SIZE, PTE_R | PTE_W, NULL);
+    svmmap(kernel_pgt, KBASE, KBASE, KCODE_SIZE, PTE_R | PTE_X, NULL);
+    svmmap(kernel_pgt, (u64)trampoline, (u64)trampoline, PGSIZE, PTE_R | PTE_X, NULL);
+    svmmap(kernel_pgt, TRAMPOLINE, (u64)trampoline, PGSIZE, PTE_R | PTE_X, NULL);
+    svmmap(kernel_pgt, KRODATA, KRODATA, KRODATA_SIZE, PTE_R, NULL);
+    svmmap(kernel_pgt, KDATA, KDATA, KDATA_SIZE, PTE_R | PTE_W, NULL);
 
     u64 va = align_up(KDATA + KDATA_SIZE, PGSIZE);
     u64 bound = VA_TOP > PHY_TOP ? PHY_TOP : VA_TOP;
     for (; va % MPGSIZE && va < bound; va += PGSIZE)
-      vmmap(kernel_pgt, va, va, PGSIZE, PTE_R | PTE_W, S_PAGE, NULL);
+      svmmap(kernel_pgt, va, va, PGSIZE, PTE_R | PTE_W, NULL);
     for (; va % GPGSIZE && va < bound; va += MPGSIZE)
-      vmmap(kernel_pgt, va, va, MPGSIZE, PTE_R | PTE_W, M_PAGE, NULL);
-    for (; va + GPGSIZE < bound; va += GPGSIZE)
-      vmmap(kernel_pgt, va, va, GPGSIZE, PTE_R | PTE_W, G_PAGE, NULL);
+      mvmmap(kernel_pgt, va, va, MPGSIZE, PTE_R | PTE_W);
+    //// for (; va + GPGSIZE < bound; va += GPGSIZE)
+    ////   gvmmap(kernel_pgt, va, va, GPGSIZE, PTE_R | PTE_W);
     for (; va < bound; va += PGSIZE)
-      vmmap(kernel_pgt, va, va, PGSIZE, PTE_R | PTE_W, S_PAGE, NULL);
+      svmmap(kernel_pgt, va, va, PGSIZE, PTE_R | PTE_W, NULL);
   }
   __sync_synchronize();
   asm volatile("sfence.vma zero, zero");

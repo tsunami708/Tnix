@@ -153,9 +153,16 @@ iget(struct superblock* sb, u32 inum)
     release_spin(&icache.inodes[i].spin);
   }
 
+  /*
+    !涉及到阻塞的IO操作时必须要临时释放当前已经持有的所有自旋锁,
+    否则在多核场景下当某个线程因为IO操作被切走而后被另一个核心调度,
+    在释放自旋锁的时会出现核心号不匹配的问题
+  */
+  release_spin(&icache.lock);
   struct inode* in = NULL;
   if (!iexist(sb, inum))
     return in;
+  acquire_spin(&icache.lock);
 
   for (int i = 0; i < NINODE; ++i) {
     acquire_spin(&icache.inodes[i].spin);

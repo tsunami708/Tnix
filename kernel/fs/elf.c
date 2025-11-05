@@ -56,7 +56,7 @@ load_segment(struct task* t, struct file* f, struct elfhdr* eh)
         attr |= PTE_W;
       if (pg.flags & ELF_PROG_FLAG_EXEC)
         attr |= PTE_X;
-      task_vmmap(t, pg.vaddr, p->paddr, PGSIZE, attr, S_PAGE);
+      task_vmmap(t, pg.vaddr, p->paddr, PGSIZE, attr, (attr & PTE_X) ? TEXT : DATA);
     }
   }
 }

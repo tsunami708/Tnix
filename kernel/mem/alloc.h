@@ -16,3 +16,4 @@ struct page* alloc_page(void);
 void free_page(struct page* p);
 
 #define pha(page) (page->paddr)
+struct page* page(u64 paddr);

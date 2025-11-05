@@ -58,7 +58,7 @@ task_init(struct task* t, struct task* parent)
     //* 分配用户栈
     p = alloc_page();
     list_pushback(&t->pages, &p->page_node);
-    task_vmmap(t, USTACK, pha(p), PGSIZE, PTE_R | PTE_W | PTE_U, S_PAGE);
+    task_vmmap(t, USTACK, pha(p), PGSIZE, PTE_R | PTE_W | PTE_U, STACK);
   }
 
   //* 分配内核栈
@@ -70,10 +70,10 @@ task_init(struct task* t, struct task* parent)
   p = alloc_page();
   ((struct trapframe*)pha(p))->ksatp = kernel_satp;
   list_pushback(&t->pages, &p->page_node);
-  vmmap(t->pagetable, TRAPFRAME, pha(p), PGSIZE, PTE_R, S_PAGE, t);
+  svmmap(t->pagetable, TRAPFRAME, pha(p), PGSIZE, PTE_R, t);
 
   //! 映射trampoline页 |  TRAMPOLINE页必须在内核和用户的页表中虚拟地址必须相同 | 该页所有task共享
-  vmmap(t->pagetable, TRAMPOLINE, (u64)trampoline, PGSIZE, PTE_X | PTE_R, S_PAGE, NULL);
+  svmmap(t->pagetable, TRAMPOLINE, (u64)trampoline, PGSIZE, PTE_X | PTE_R, NULL);
 }
 
 struct task*
@@ -110,5 +110,22 @@ clean_source(struct task* t)
     tmp = cur->next;
     free_page(container_of(cur, struct page, page_node));
     cur = tmp;
+  }
+}
+
+// 清空代码段和数据段
+void
+reset_vma(struct task* t)
+{
+  int i = 0;
+  while (i < t->vmas.nvma) {
+    if (t->vmas.vmas[i].type == DATA || t->vmas.vmas[i].type == TEXT) {
+      vmunmap(t->pagetable, t->vmas.vmas[i].va, t->vmas.vmas[i].len);
+      list_remove(&page(t->vmas.vmas[i].pa)->page_node);
+      for (int j = i; j < t->vmas.nvma - 1; j++)
+        t->vmas.vmas[j] = t->vmas.vmas[j + 1];
+      t->vmas.nvma--;
+    } else
+      ++i;
   }
 }

@@ -1,7 +1,7 @@
-// #include "usys.h"
+#include "usys.h"
 
-int
+void
 main(void)
 {
-  return 0;
+  exit(0);
 }

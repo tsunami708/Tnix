@@ -20,7 +20,7 @@ first_sched(void)
   release_spin(&t->lock);
   u64 addr = (u64)run_new_task - (u64)trampoline + TRAMPOLINE; // run_new_task的高虚拟地址
 
-  static bool first = true; // 第一次调度systemd
+  static bool first = true; // 第一次调度init
   if (first) {
     first = false;
     __sync_synchronize();
@@ -33,7 +33,6 @@ first_sched(void)
     }
     fclose(f);
   }
-
   cli();
   /*
     note: 需要在进入用户态之前设置trap向量表寄存器stvec

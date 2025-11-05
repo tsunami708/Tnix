@@ -5,6 +5,7 @@
 #include "util/spinlock.h"
 #include "task/cpu.h"
 #include "fs/file.h"
+#include "mem/vm.h"
 
 struct inode;
 
@@ -17,6 +18,7 @@ enum task_state {
   EXIT,
 };
 
+
 struct trapframe {
   u64 ksatp;
 };
@@ -26,7 +28,7 @@ struct vma {
   u64 pa;
   u64 len;
   u16 attr;
-  i8 gra;
+  enum vma_type type;
 };
 
 
@@ -71,3 +73,4 @@ struct task {
 
 struct task* alloc_task(struct task* p);
 void clean_source(struct task* t);
+void reset_vma(struct task* t);

@@ -204,7 +204,6 @@ extern void do_syscall(struct pt_regs* pt);
 static void
 syn_syscall_u(struct pt_regs* pt)
 {
-  print("cpu%u trigger %s\n", cpuid(), __func__);
   do_syscall(pt);
 }
 static void

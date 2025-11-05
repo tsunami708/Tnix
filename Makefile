@@ -41,7 +41,7 @@ OBJS = \
 	$K/mem/vm.o \
 	$K/task/sche.o \
 	$K/task/switch.o \
-	$K/task/systemd.o \
+	$K/task/init.o \
 	$K/task/task.o \
 	$K/dev/uart.o \
 	$K/dev/disk.o \
@@ -60,7 +60,6 @@ OBJS = \
 	$K/trap/pt_reg.o \
 	$K/trap/plic.o \
 	$K/syscall/syscall.o \
-	$K/syscall/usys.o \
 
 U=user
 PROGS = \

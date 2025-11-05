@@ -5,10 +5,11 @@
 #include "task/task.h"
 #include "task/sche.h"
 #include "mem/vm.h"
-#include "mem/alloc.h"
 #include "fs/file.h"
-#include "fs/inode.h"
+#include "fs/elf.h"
 
+extern void context_switch(struct context* old, struct context* new);
+extern void first_sched(void);
 
 static syscall_t syscalls[] = {
   [SYS_FORK] sys_fork,
@@ -17,10 +18,18 @@ static syscall_t syscalls[] = {
   [SYS_WAIT] sys_wait,
 };
 
+static const char* sysfunc[] = {
+  [SYS_FORK] "fork",
+  [SYS_EXIT] "exit",
+  [SYS_EXEC] "exec",
+  [SYS_WAIT] "wait",
+};
+
 void
 do_syscall(struct pt_regs* pt)
 {
   int sysno = pt->a7;
+  print("cpu%d call syscall - %s\n", cpuid(), sysfunc[sysno]);
   if (sysno < 0 || sysno > sizeof(syscalls) / sizeof(syscall_t) - 1)
     panic("illegal syscall");
   u64 ret = syscalls[sysno](pt);
@@ -52,8 +61,6 @@ sys_fork(struct pt_regs*)
 u64
 sys_exit(struct pt_regs* pt)
 {
-  extern void context_switch(struct context * old, struct context * new);
-
   struct task* t = mytask();
   t->exit_code = pt->a0;
 
@@ -61,6 +68,8 @@ sys_exit(struct pt_regs* pt)
 
   t->state = EXIT;
   wakeup(&t->parent->childs);
+
+  print("process %d done\n", t->pid);
 
   acquire_spin(&t->lock);
   context_switch(&t->ctx, &mycpu()->ctx);
@@ -70,7 +79,33 @@ sys_exit(struct pt_regs* pt)
 u64
 sys_exec(struct pt_regs* pt)
 {
-  return 1;
+  if (pt->a0) {
+    pte_t* pte;
+    u64 paddr = va_to_pa(mytask()->pagetable, pt->a0, &pte);
+    if (paddr == 0 || ((*pte) & (PTE_U | PTE_R)) != (PTE_U | PTE_R))
+      kill();
+    char path[128] = { 0 };
+    int len = strlen((char*)paddr);
+    if (len + 1 > sizeof(path))
+      goto bad;
+    memcpy(path, (void*)paddr, len);
+    struct elfhdr eh;
+    struct file* f = read_elfhdr(path, &eh);
+    if (f == NULL)
+      goto bad;
+
+    struct task* t = mytask();
+    reset_vma(t);
+    load_segment(t, f, &eh);
+    t->entry = eh.entry;
+    t->ctx.ra = (u64)first_sched;
+    t->ctx.sp = t->kstack;
+    t->state = READY;
+    acquire_spin(&t->lock);
+    context_switch(NULL, &mycpu()->ctx);
+  }
+bad:
+  return -1;
 }
 
 u64

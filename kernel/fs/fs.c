@@ -78,7 +78,6 @@ free_block(struct superblock* sb, u32 blockno)
   brelse(buf);
 }
 
-extern struct inode* dlookup(const char* path);
 void
 fsinit(void)
 {

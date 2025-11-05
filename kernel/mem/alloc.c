@@ -7,6 +7,12 @@
 extern char end[]; // kernel.ld提供的内核静态数据区结束地址
 static struct page phy_mem[PHY_SIZE / PGSIZE];
 
+struct page*
+page(u64 paddr)
+{
+  return phy_mem + (paddr - PHY_MEMORY) / PGSIZE;
+}
+
 INIT_SPINLOCK(mem_spin);
 INIT_LIST(pages_head);
 

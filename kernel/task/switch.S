@@ -39,8 +39,9 @@ dump_context:
   ret
 
 context_switch:
+  beqz a0, .L
   store_context  
-
+.L:
   ld ra, CT_RA(a1) #important
   ld sp, CT_SP(a1)
   ld s0, CT_S0(a1)
