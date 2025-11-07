@@ -4,12 +4,13 @@
 #include "util/spinlock.h"
 
 struct inode {
-  struct sleeplock slep; // note: 仅保护di
+  struct sleeplock slep; // 仅保护di
   struct dinode di;
   struct spinlock spin;
   struct superblock* sb;
   u32 inum;
   u32 refc;
+  dev_t dev; // 仅对设备文件有效
 };
 
 u32 ialloc(struct superblock* sb);

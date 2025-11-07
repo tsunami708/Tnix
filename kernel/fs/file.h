@@ -6,7 +6,7 @@ struct inode;
 struct pipe {};
 
 struct file {
-  enum type { PIPE, INODE } type;
+  enum type { PIPE, INODE, DEV } type;
   u32 size;
   u32 refc;
   u32 off;
