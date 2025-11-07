@@ -68,17 +68,8 @@ uart_put_syn(char c)
 void
 do_uart_irq(void)
 {
+  extern void do_console_irq(char);
   char ch = uart_get();
-  if (ch != (char)-1) {
-    if (ch == '\r')
-      uart_put_syn('\n');
-    else if (ch == 127) { // backspace
-      uart_put_syn('\b');
-      uart_put_syn(' ');
-      uart_put_syn('\b');
-    } else if (ch == 16)
-      uart_put_syn('P'); // ctrl+p
-    else
-      uart_put_syn(ch);
-  }
+  if (ch != (char)-1)
+    do_console_irq(ch);
 }
