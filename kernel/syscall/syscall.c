@@ -5,17 +5,17 @@
 
 
 static syscall_t syscalls[] = {
-  [SYS_FORK] sys_fork,     [SYS_EXIT] sys_exit,     [SYS_EXEC] sys_exec,   [SYS_WAIT] sys_wait,   [SYS_READ] sys_read,
-  [SYS_WRITE] sys_write,   [SYS_OPEN] sys_open,     [SYS_DUP] sys_dup,     [SYS_CLOSE] sys_close, [SYS_LINK] sys_link,
-  [SYS_UNLINK] sys_unlink, [SYS_MKDIR] sys_mkdir,   [SYS_RMDIR] sys_rmdir, [SYS_MKNOD] sys_mknod, [SYS_CHDIR] sys_chdir,
-  [SYS_MMAP] sys_mmap,     [SYS_MUNMAP] sys_munmap,
+  [SYS_FORK] sys_fork,     [SYS_EXIT] sys_exit,   [SYS_EXEC] sys_exec,     [SYS_WAIT] sys_wait,   [SYS_READ] sys_read,
+  [SYS_WRITE] sys_write,   [SYS_OPEN] sys_open,   [SYS_DUP] sys_dup,       [SYS_CLOSE] sys_close, [SYS_LINK] sys_link,
+  [SYS_UNLINK] sys_unlink, [SYS_MKDIR] sys_mkdir, [SYS_RMDIR] sys_rmdir,   [SYS_MKNOD] sys_mknod, [SYS_CHDIR] sys_chdir,
+  [SYS_RENAME] sys_rename, [SYS_MMAP] sys_mmap,   [SYS_MUNMAP] sys_munmap,
 };
 
 static const char* sysfunc[] = {
-  [SYS_FORK] "fork",     [SYS_EXIT] "exit",     [SYS_EXEC] "exec",   [SYS_WAIT] "wait",   [SYS_READ] "read",
-  [SYS_WRITE] "write",   [SYS_OPEN] "open",     [SYS_DUP] "dup",     [SYS_CLOSE] "close", [SYS_LINK] "link",
-  [SYS_UNLINK] "unlink", [SYS_MKDIR] "mkdir",   [SYS_RMDIR] "rmdir", [SYS_MKNOD] "mknod", [SYS_CHDIR] "chdir",
-  [SYS_MMAP] "mmap",     [SYS_MUNMAP] "munmap",
+  [SYS_FORK] "fork",     [SYS_EXIT] "exit",   [SYS_EXEC] "exec",     [SYS_WAIT] "wait",   [SYS_READ] "read",
+  [SYS_WRITE] "write",   [SYS_OPEN] "open",   [SYS_DUP] "dup",       [SYS_CLOSE] "close", [SYS_LINK] "link",
+  [SYS_UNLINK] "unlink", [SYS_MKDIR] "mkdir", [SYS_RMDIR] "rmdir",   [SYS_MKNOD] "mknod", [SYS_CHDIR] "chdir",
+  [SYS_RENAME] "rename", [SYS_MMAP] "mmap",   [SYS_MUNMAP] "munmap",
 };
 
 void
@@ -30,7 +30,7 @@ do_syscall(struct pt_regs* pt)
 }
 
 bool
-argstr(u64 uaddr, char path[MAX_PATH_LENGTH])
+argstr(u64 uaddr, char* path)
 {
   extern void kill(void);
   pte_t* pte;

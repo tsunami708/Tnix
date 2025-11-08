@@ -161,4 +161,5 @@ init_console(void)
   init_uart();
   devsw[CONSOLE].read = console_read;
   devsw[CONSOLE].write = console_write;
+  devsw[CONSOLE].valid = true;
 }

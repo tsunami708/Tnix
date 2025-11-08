@@ -1,15 +1,23 @@
 #include "usys.h"
 
 void
-main(int, char*[])
+main(void)
 {
-  int pid = fork();
-  if (pid == 0) {
-    exec("/bin/sh", 0);
-    exit(1);
-  } else if (pid > 0) {
-    int status;
-    wait(&status);
+  int fd = open("/dev/console", O_RDWR);
+  if (fd < 0) {
+    mknod("/dev/console", 1);
+    fd = open("/dev/console", O_RDWR);
   }
+
+  // int pid = fork();
+  // if (pid == 0) {
+  //   exec("/bin/sh", 0);
+  //   exit(1);
+  // } else if (pid > 0) {
+  //   int status;
+  //   wait(&status);
+  // }
+
+  close(fd);
   exit(0);
 }

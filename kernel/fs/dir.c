@@ -30,6 +30,16 @@ parse_path(const char* path, char dname[DLENGTH])
   return p;
 }
 
+static void
+dentry_name_copy(char* dst, const char* src)
+{
+  for (int i = 0; i < DLENGTH; ++i) {
+    if (src[i] == '\0')
+      break;
+    dst[i] = src[i];
+  }
+}
+
 struct inode*
 dlookup(const char* path)
 {
@@ -48,13 +58,12 @@ dlookup(const char* path)
   while ((p = parse_path(path, dname))) {
     path = p;
 
-    int i = 0;
     bool found = false;
     struct superblock* sb = cur->sb;
-    dev_t dev = sb->dev;
+    int maxi = cur->di.fsize % BSIZE;
 
-    while (cur->di.iblock[i] != 0 && ! found) {
-      buf = bread(dev, cur->di.iblock[i]);
+    for (int i = 0; i <= maxi && ! found; ++i) {
+      buf = data_block_get(cur, i);
       struct dentry* dentry = (void*)buf->data;
       for (int j = 0; j < BSIZE / sizeof(struct dentry); ++j)
         if (strncmp(dname, (dentry + j)->name, DLENGTH) == 0) {
@@ -64,8 +73,8 @@ dlookup(const char* path)
           break;
         }
       brelse(buf);
-      ++i;
     }
+
     if (! found) {
       iput(cur);
       return NULL; // 无效路径
@@ -90,4 +99,33 @@ path_split(const char* path, char* parentpath, char* filename)
     memcpy(parentpath, path, m);
     memcpy(filename, path + m + 1, n - m - 1);
   }
+}
+
+void
+dentry_add(struct inode* dir, u32 inum, const char* name)
+{
+  struct buf* b;
+  int maxi = dir->di.fsize / BSIZE;
+  bool done = false;
+  for (int i = 0; i <= maxi && ! done; ++i) {
+    b = data_block_get(dir, i);
+    struct dentry* dt = (void*)b->data;
+    for (int j = 0; j < BSIZE / sizeof(struct dentry); ++j)
+      if (*((dt + j)->name) == '\0') {
+        done = true;
+        (dt + j)->inum = inum;
+        dentry_name_copy((dt + j)->name, name);
+        bwrite(b);
+        break;
+      }
+    brelse(b);
+  }
+}
+void
+dentry_del(struct inode* dir, const char* name)
+{
+}
+void
+dentry_rename(struct inode* dir, const char* oldname, const char* newname)
+{
 }

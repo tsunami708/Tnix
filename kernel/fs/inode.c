@@ -47,12 +47,18 @@ iexist(struct superblock* sb, u32 inum)
   return (*section) & (1UL << (k % 8));
 }
 
+void
+ireset(struct inode* inode)
+{
+  // todo
+}
+
 // * 从磁盘读取文件的属性信息
 // ! 请确保线程持有inode的阻塞锁和inode存在于磁盘
 void
 iread(struct inode* inode)
 {
-  if (!holding_sleep(&inode->slep))
+  if (! holding_sleep(&inode->slep))
     panic("read dinode,but not hold lock");
 
   u32 blockno = blockno_of_inode(inode);
@@ -69,8 +75,9 @@ iread(struct inode* inode)
 void
 iupdate(struct inode* inode)
 {
-  if (!holding_sleep(&inode->slep))
-    panic("update dinode,but not hold lock");
+  // if (! holding_sleep(&inode->slep))
+  //   panic("update dinode,but not hold lock");
+  acquire_sleep(&inode->slep);
 
   u32 blockno = blockno_of_inode(inode);
   struct buf* buf = bread(inode->sb->dev, blockno);
@@ -79,6 +86,8 @@ iupdate(struct inode* inode)
   memcpy(di, &inode->di, sizeof(struct dinode));
   bwrite(buf);
   brelse(buf);
+
+  release_sleep(&inode->slep);
 }
 
 //* 创建文件
@@ -160,7 +169,7 @@ iget(struct superblock* sb, u32 inum)
   */
   release_spin(&icache.lock);
   struct inode* in = NULL;
-  if (!iexist(sb, inum))
+  if (! iexist(sb, inum))
     return in;
   acquire_spin(&icache.lock);
 
@@ -195,6 +204,21 @@ iput(struct inode* inode)
   release_spin(&inode->spin);
 }
 
+// 获取文件的第i个数据块,i从0开始计数
+struct buf*
+data_block_get(struct inode* in, u32 i)
+{
+  struct buf* r;
+  if (i < NDIRECT)
+    r = bread(in->sb->dev, in->di.iblock[i]);
+  else {
+    struct buf* b = bread(in->sb->dev, in->di.iblock[(i - NDIRECT) / IDX_COUNT_PER_INDIRECT_BLCOK]);
+    u32 n = *(((u32*)b->data) + (i - NDIRECT) % IDX_COUNT_PER_INDIRECT_BLCOK);
+    brelse(b);
+    r = bread(in->sb->dev, n);
+  }
+  return r;
+}
 
 void
 init_icache(void)

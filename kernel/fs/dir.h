@@ -15,6 +15,10 @@ static_assert(BSIZE % sizeof(struct dentry) == 0, "BSZIE must be divisible by de
 #else
 _Static_assert(BSIZE % sizeof(struct dentry) == 0, "BSZIE must be divisible by dentry size");
 #endif
+
 struct inode;
 struct inode* dlookup(const char* path);
 void path_split(const char* path, char* parentpath, char* filename);
+void dentry_add(struct inode* dir, u32 inum, const char* name);
+void dentry_del(struct inode* dir, const char* name);
+void dentry_rename(struct inode* dir, const char* oldname, const char* newname);

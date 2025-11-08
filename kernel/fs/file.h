@@ -5,6 +5,15 @@
 struct inode;
 struct pipe {};
 
+enum mode {
+  O_RDONLY = 0b1,
+  O_WRONLY = 0b10,
+  O_RDWR = 0b100,
+  O_TRUNC = 0b1000,
+  O_APPEND = 0b10000,
+  O_CREAT = 0b100000,
+};
+
 struct file {
   enum mode mode;
   enum type { NONE, PIPE, INODE, DEVICE } type;
@@ -21,6 +30,7 @@ struct file {
 struct dev_op {
   u32 (*read)(void*, u32);
   u32 (*write)(const void*, u32);
+  bool valid;
 };
 
 struct file* falloc(void);

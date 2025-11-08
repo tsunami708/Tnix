@@ -19,6 +19,9 @@ void ifree(struct inode* inode);
 struct inode* iget(struct superblock* sb, u32 inum);
 void iput(struct inode* inode);
 
+void ireset(struct inode* inode);
 void iread(struct inode* inode);
 void iupdate(struct inode* inode);
 bool iexist(struct superblock* sb, u32 inum);
+
+struct buf* data_block_get(struct inode* in, u32 i);
