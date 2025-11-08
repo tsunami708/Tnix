@@ -53,7 +53,7 @@ dlookup(const char* path)
     struct superblock* sb = cur->sb;
     dev_t dev = sb->dev;
 
-    while (cur->di.iblock[i] != 0 && !found) {
+    while (cur->di.iblock[i] != 0 && ! found) {
       buf = bread(dev, cur->di.iblock[i]);
       struct dentry* dentry = (void*)buf->data;
       for (int j = 0; j < BSIZE / sizeof(struct dentry); ++j)
@@ -66,10 +66,28 @@ dlookup(const char* path)
       brelse(buf);
       ++i;
     }
-    if (!found) {
+    if (! found) {
       iput(cur);
       return NULL; // 无效路径
     }
   }
   return cur;
+}
+
+void
+path_split(const char* path, char* parentpath, char* filename)
+{
+  int m = -1, n = 0;
+  while (path[n]) {
+    if (path[n] == '/')
+      m = n;
+    ++n;
+  }
+  if (m == -1) {
+    *parentpath = '.';
+    memcpy(filename, path, n);
+  } else {
+    memcpy(parentpath, path, m);
+    memcpy(filename, path + m + 1, n - m - 1);
+  }
 }

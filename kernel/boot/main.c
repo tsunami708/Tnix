@@ -7,7 +7,7 @@ extern void init_page(void);
 extern void init_trap(void);
 extern void init_plic(void);
 extern void init_systemd(void);
-extern void init_uart(void);
+extern void init_console(void);
 extern void init_bcache(void);
 extern void init_icache(void);
 extern void init_disk(void);
@@ -18,7 +18,7 @@ void
 main(void)
 {
   if (cpuid() == 0) {
-    init_uart();    // 终端初始化
+    init_console(); // 终端初始化
     init_memory();  // 物理地址初始化
     init_page();    // 内核页表初始化
     init_trap();    // 陷阱处理初始化
@@ -30,7 +30,7 @@ main(void)
     __sync_synchronize();
     cpu_ok = true;
   } else {
-    while (!cpu_ok)
+    while (! cpu_ok)
       ;
     init_page();
     init_trap();

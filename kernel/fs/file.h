@@ -6,7 +6,8 @@ struct inode;
 struct pipe {};
 
 struct file {
-  enum type { PIPE, INODE, DEV } type;
+  enum mode mode;
+  enum type { NONE, PIPE, INODE, DEVICE } type;
   u32 size;
   u32 refc;
   u32 off;
@@ -15,6 +16,11 @@ struct file {
     struct pipe* pipe;
   };
   struct spinlock lock;
+};
+
+struct dev_op {
+  u32 (*read)(void*, u32);
+  u32 (*write)(const void*, u32);
 };
 
 struct file* falloc(void);

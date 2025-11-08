@@ -61,6 +61,9 @@ OBJS = \
 	$K/trap/pt_reg.o \
 	$K/trap/plic.o \
 	$K/syscall/syscall.o \
+	$K/syscall/sysfs.o \
+	$K/syscall/systask.o \
+	$K/syscall/sysmem.o \
 
 U=user
 PROGS = \

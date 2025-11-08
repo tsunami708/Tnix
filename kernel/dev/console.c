@@ -1,11 +1,15 @@
+#include "config.h"
 #include "util/types.h"
 #include "util/spinlock.h"
 #include "util/string.h"
 #include "util/printf.h"
 #include "task/sche.h"
+#include "fs/file.h"
 
 
 extern void uart_put_syn(char);
+extern void copy_to_user(void* udst, const void* ksrc, u32 bytes);
+extern void copy_from_user(void* kdst, const void* usrc, u32 bytes);
 
 #define CONSOLE_BUFFER_SIZE 128
 static struct {
@@ -113,38 +117,48 @@ do_console_irq(char ch)
 }
 
 u32
-console_read(void* dst, u32 len)
+console_read(void* udst, u32 len)
 {
   acquire_spin(&con.lock);
   len = min(len, CONSOLE_READABLE_LEN);
   if (len == 0)
     sleep(&con.r, &con.lock);
   if (con.r < con.w)
-    memcpy(dst, con.buf + con.r, len);
+    copy_to_user(udst, con.buf, len);
   else {
     u32 lslice1 = CONSOLE_BUFFER_SIZE - con.r, lslice2 = len - lslice1;
-    memcpy(dst, con.buf + con.r, lslice1);
-    memcpy(dst + lslice1, con.buf, lslice2);
+    copy_to_user(udst, con.buf + con.r, lslice1);
+    copy_to_user(udst + lslice1, con.buf, lslice2);
   }
   con.r = (con.r + len) % CONSOLE_BUFFER_SIZE;
   release_spin(&con.lock);
   return len;
 }
 u32
-console_write(const void* src, u32 len)
+console_write(const void* usrc, u32 len)
 {
   acquire_spin(&con.lock);
   len = min(len, CONSOLE_WRITEABLE_LEN);
   if (len == 0)
     sleep(&con.w, &con.lock);
   if (con.w < con.r)
-    memcpy(con.buf + con.w, src, len);
+    copy_from_user(con.buf + con.w, usrc, len);
   else {
     u32 lslice1 = CONSOLE_BUFFER_SIZE - con.w, lslice2 = len - lslice1;
-    memcpy(con.buf + con.w, src, lslice1);
-    memcpy(con.buf, src + lslice1, lslice2);
+    copy_from_user(con.buf + con.w, usrc, lslice1);
+    copy_from_user(con.buf, usrc + lslice1, lslice2);
   }
   con.w = (con.w + len) % CONSOLE_BUFFER_SIZE;
   release_spin(&con.lock);
   return len;
+}
+
+void
+init_console(void)
+{
+  extern void init_uart(void);
+  extern struct dev_op devsw[NDEV];
+  init_uart();
+  devsw[CONSOLE].read = console_read;
+  devsw[CONSOLE].write = console_write;
 }

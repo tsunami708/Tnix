@@ -24,3 +24,81 @@ wait:
   li a7, SYS_WAIT
   ecall
   ret
+
+.global read
+read:
+  li a7, SYS_READ
+  ecall
+  ret
+
+.global write
+write:
+  li a7, SYS_WRITE
+  ecall
+  ret
+
+.global open
+open:
+  li a7, SYS_OPEN
+  ecall
+  ret
+
+.global dup
+dup:
+  li a7, SYS_DUP
+  ecall
+  ret
+
+.global close
+close:
+  li a7, SYS_CLOSE
+  ecall
+  ret
+
+.global link
+link:
+  li a7, SYS_LINK
+  ecall
+  ret
+
+.global unlink
+unlink:
+  li a7, SYS_UNLINK
+  ecall
+  ret
+
+.global mkdir
+mkdir:
+  li a7, SYS_MKDIR
+  ecall
+  ret
+
+.global rmdir
+rmdir:
+  li a7, SYS_RMDIR
+  ecall
+  ret
+
+.global mknod
+mknod:
+  li a7, SYS_MKNOD
+  ecall
+  ret
+
+.global chdir
+chdir:
+  li a7, SYS_CHDIR
+  ecall
+  ret
+
+.global mmap
+mmap:
+  li a7, SYS_MMAP
+  ecall
+  ret
+
+.global munmap
+munmap:
+  li a7, SYS_MUNMAP
+  ecall
+  ret

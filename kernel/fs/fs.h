@@ -30,6 +30,7 @@ enum ftype {
   UNUSE,
   REGULAR,
   DIRECTORY,
+  CHAR,
 };
 
 struct superblock {

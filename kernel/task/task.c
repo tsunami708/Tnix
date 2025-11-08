@@ -100,7 +100,7 @@ clean_source(struct task* t)
   iput(t->cwd);
 
   for (int i = 0; i < t->files.i; ++i)
-    fclose(&t->files.f[i]);
+    fclose(t->files.f[i]);
   t->files.i = 0;
 
   t->vmas.nvma = 0;

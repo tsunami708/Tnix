@@ -49,7 +49,7 @@ struct task {
   void* chan;
 
   struct {
-    struct file f[NFILE];
+    struct file* f[NFILE];
     u8 i;
   } files;
 

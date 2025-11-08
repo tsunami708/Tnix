@@ -17,3 +17,4 @@ _Static_assert(BSIZE % sizeof(struct dentry) == 0, "BSZIE must be divisible by d
 #endif
 struct inode;
 struct inode* dlookup(const char* path);
+void path_split(const char* path, char* parentpath, char* filename);
