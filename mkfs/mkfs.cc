@@ -298,27 +298,33 @@ directory_copy(const char* path, u32 pinum, bool root)
 
   for (int i = 0; i < NDIRECT && di->iblock[i] > 0; ++i) {
     struct dentry dts[BSIZE / sizeof(dentry)] = { 0 };
-    int j = 0;
+    u64* dentry_count = (u64*)dts; // 目录文件的每一个数据块第一个位置用于记录当前数据块有效条目的个数
+    int j = 1;
+
     if (i == 0) [[unlikely]] {
       struct dentry s = { .inum = inum, .name = "." };
       struct dentry p = { .inum = root ? inum : pinum, .name = ".." };
       memcpy(dts + j++, &s, sizeof(s));
       memcpy(dts + j++, &p, sizeof(p));
+      *dentry_count = 2;
     }
-    while (j < sizeof(dts) / sizeof(dentry) && !child_dirs.empty()) {
+
+    while (j < sizeof(dts) / sizeof(dentry) && ! child_dirs.empty()) {
       struct dentry c;
       c.inum = directory_copy(child_dirs.front().c_str(), inum);
       dentry_name_copy(&c, child_dirs.front().c_str());
       child_dirs.pop();
       memcpy(dts + j++, &c, sizeof(c));
+      ++(*dentry_count);
     }
 
-    while (j < sizeof(dts) / sizeof(dentry) && !namei.empty()) {
+    while (j < sizeof(dts) / sizeof(dentry) && ! namei.empty()) {
       struct dentry c;
       c.inum = namei.front().second;
       dentry_name_copy(&c, namei.front().first.c_str());
       namei.pop();
       memcpy(dts + j++, &c, sizeof(c));
+      ++(*dentry_count);
     }
 
     lseek(disk_fd, di->iblock[i] * BSIZE, SEEK_SET);
@@ -331,21 +337,25 @@ directory_copy(const char* path, u32 pinum, bool root)
     read(disk_fd, idx, sizeof(idx));
     for (int j = 0; j < sizeof(idx) / sizeof(u32) && idx[j] > 0; ++j) {
       struct dentry dts[BSIZE / sizeof(dentry)] = { 0 };
-      int k = 0;
-      while (k < sizeof(dts) / sizeof(dentry) && !child_dirs.empty()) {
+      u64* dentry_count = (u64*)dts;
+
+      int k = 1;
+      while (k < sizeof(dts) / sizeof(dentry) && ! child_dirs.empty()) {
         struct dentry c;
         c.inum = directory_copy(child_dirs.front().c_str(), inum);
         dentry_name_copy(&c, child_dirs.front().c_str());
         child_dirs.pop();
         memcpy(dts + k++, &c, sizeof(c));
+        ++(*dentry_count);
       }
 
-      while (k < sizeof(dts) / sizeof(dentry) && !namei.empty()) {
+      while (k < sizeof(dts) / sizeof(dentry) && ! namei.empty()) {
         struct dentry c;
         c.inum = namei.front().second;
         dentry_name_copy(&c, namei.front().first.c_str());
         namei.pop();
         memcpy(dts + k++, &c, sizeof(c));
+        ++(*dentry_count);
       }
 
       lseek(disk_fd, idx[j] * BSIZE, SEEK_SET);
