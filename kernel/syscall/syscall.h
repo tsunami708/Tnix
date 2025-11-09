@@ -15,9 +15,8 @@
 #define SYS_RMDIR  12
 #define SYS_MKNOD  13
 #define SYS_CHDIR  14
-#define SYS_RENAME 15
-#define SYS_MMAP   16
-#define SYS_MUNMAP 17
+#define SYS_MMAP   15
+#define SYS_MUNMAP 16
 
 #ifndef AS
 struct pt_regs;
@@ -40,8 +39,18 @@ u64 sys_mkdir(struct pt_regs* pt);
 u64 sys_rmdir(struct pt_regs* pt);
 u64 sys_mknod(struct pt_regs* pt);
 u64 sys_chdir(struct pt_regs* pt);
-u64 sys_rename(struct pt_regs* pt);
 u64 sys_mmap(struct pt_regs* pt);
 u64 sys_munmap(struct pt_regs* pt);
+
+enum errno {
+  EINVAL = 1,
+  EEXIST,
+  ENOENT,
+  ENOMEM,
+  ENOTDIR,
+  EISDIR,
+  EFBIG,
+  ENEMPTY,
+};
 
 #endif

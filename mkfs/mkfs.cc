@@ -270,7 +270,7 @@ directory_copy(const char* path, u32 pinum, bool root)
     }
   }
 
-  di->fsize = entry_cnt * sizeof(struct dentry);
+  di->fsize = ((((1 + entry_cnt) * sizeof(struct dentry)) + BSIZE - 1) & ~(BSIZE - 1));
   long dsize = di->fsize;
   int i = 0;
   while (i < NDIRECT && dsize > 0) {

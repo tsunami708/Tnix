@@ -91,12 +91,6 @@ chdir:
   ecall
   ret
 
-.global rename
-rename:
-  li a7, SYS_RENAME
-  ecall
-  ret
-
 .global mmap
 mmap:
   li a7, SYS_MMAP

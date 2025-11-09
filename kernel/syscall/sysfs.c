@@ -3,6 +3,7 @@
 #include "fs/inode.h"
 #include "fs/dir.h"
 #include "fs/fs.h"
+#include "fs/bio.h"
 #include "task/task.h"
 #include "trap/pt_reg.h"
 #include "syscall/syscall.h"
@@ -15,18 +16,26 @@ struct dev_op devsw[NDEV];
     更新文件所属的目录文件(新增一条目录项)
     增加父目录的硬链接计数(如果创建的是目录)
 */
-static bool
+static int
 create(const char* path, enum ftype type, dev_t dev)
 {
+  // 1.如果目录项已经存在,则不能再创建
+  struct inode* in = dlookup(path);
+  if (in) {
+    iput(in);
+    return -EEXIST;
+  }
+
+  // 2.检查父目录是否存在
   char parentpath[MAX_PATH_LENGTH] = { 0 }, filename[MAX_PATH_LENGTH] = { 0 };
   path_split(path, parentpath, filename);
   struct inode* parent = dlookup(parentpath);
   if (parent == NULL)
-    return false;
+    return -ENOENT;
 
+  // 3.申请inode节点~创建文件元数据
   struct superblock* sb = parent->sb;
   struct inode* new = iget(sb, ialloc(sb));
-  ireset(new);
   new->di.nlink = 1;
 
   switch (type) {
@@ -37,7 +46,7 @@ create(const char* path, enum ftype type, dev_t dev)
     new->di.type = DIRECTORY;
     dentry_add(new, new->inum, ".");
     dentry_add(new, parent->inum, "..");
-    ++parent->di.nlink;
+    ++parent->di.nlink; //..
     break;
   case CHAR:
     if (! devsw[dev].valid)
@@ -49,9 +58,11 @@ create(const char* path, enum ftype type, dev_t dev)
     return false;
   }
   iupdate(new);
+
+  // 4.更新父目录的目录项
   dentry_add(parent, new->inum, filename);
   iupdate(parent);
-  return true;
+  return 0;
 }
 
 u64
@@ -136,6 +147,7 @@ sys_open(struct pt_regs* pt)
   f->type = in->di.type == CHAR ? DEVICE : INODE;
   f->size = in->di.fsize;
   f->mode = mode;
+  f->off = 0;
   u64 r = t->files.i++;
   t->files.f[r] = f;
   return r;
@@ -183,20 +195,46 @@ sys_unlink(struct pt_regs* pt)
 u64
 sys_mkdir(struct pt_regs* pt)
 {
-  return 0;
+  if (pt->a0 == 0)
+    return -EINVAL;
+  char path[MAX_PATH_LENGTH] = { 0 };
+  if (argstr(pt->a0, path) == false)
+    return -EINVAL;
+  return create(path, DIRECTORY, -1);
 }
 u64
 sys_rmdir(struct pt_regs* pt)
 {
+  if (pt->a0 == 0)
+    return -EINVAL;
+  char path[MAX_PATH_LENGTH] = { 0 };
+  if (argstr(pt->a0, path) == false)
+    return -EINVAL;
+  struct inode* c = dlookup(path);
+  if (c == NULL)
+    return -ENOENT;
+  if (c->di.type != DIRECTORY)
+    return -EINVAL;
+
+  // 检查是否为空目录
+  struct buf* b = bread(c->sb->dev, c->di.iblock[0]);
+  if (*(u64*)b->data != 2) {
+    brelse(b);
+    return -ENEMPTY;
+  }
+  brelse(b);
+  iput(c);
+
+  char pdir[MAX_PATH_LENGTH] = { 0 }, name[MAX_PATH_LENGTH] = { 0 };
+  path_split(path, pdir, name);
+  struct inode* p = dlookup(pdir);
+  dentry_del(p, name);
+  --p->di.nlink;
+  iput(p);
   return 0;
 }
 u64
 sys_chdir(struct pt_regs* pt)
-{
-  return 0;
-}
-u64
-sys_rename(struct pt_regs* pt)
 {
   return 0;
 }

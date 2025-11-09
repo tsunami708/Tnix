@@ -17,6 +17,8 @@ main(void)
   //   int status;
   //   wait(&status);
   // }
+  mkdir("tmp");
+  rmdir("tmp");
 
   close(fd);
   exit(0);

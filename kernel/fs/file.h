@@ -9,9 +9,7 @@ enum mode {
   O_RDONLY = 0b1,
   O_WRONLY = 0b10,
   O_RDWR = 0b100,
-  O_TRUNC = 0b1000,
-  O_APPEND = 0b10000,
-  O_CREAT = 0b100000,
+  O_CREAT = 0b1000,
 };
 
 struct file {

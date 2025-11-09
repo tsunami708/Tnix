@@ -9,6 +9,7 @@
 #define IPB (BSIZE / sizeof(struct dinode)) // 每块中的dinode个数
 #define BPB (BSIZE * 8)                     // 每块比特位数
 
+
 static struct {
   struct inode inodes[NINODE];
   struct spinlock lock;
@@ -47,11 +48,6 @@ iexist(struct superblock* sb, u32 inum)
   return (*section) & (1UL << (k % 8));
 }
 
-void
-ireset(struct inode* inode)
-{
-  // todo
-}
 
 // * 从磁盘读取文件的属性信息
 // ! 请确保线程持有inode的阻塞锁和inode存在于磁盘
@@ -218,6 +214,54 @@ data_block_get(struct inode* in, u32 i)
     r = bread(in->sb->dev, n);
   }
   return r;
+}
+
+// 为文件增加一个数据块(扩容),自动完成索引更新
+#define FILE_MAX_DATA_BLOCKNUM (NDIRECT + NIDIRECT * sizeof(u32))
+struct buf*
+data_block_alloc(struct inode* in)
+{
+  u32 curn = in->di.fsize / BSIZE; // 当前数据块块数
+  // in->di.fsize%BSIZE==0为真;如果为假则说明有数据块为满,内核不应该为其分配新的数据块
+  if (curn == FILE_MAX_DATA_BLOCKNUM)
+    return NULL;
+  u32 blockno = alloc_block(in->sb);
+  if (curn < NDIRECT)
+    in->di.iblock[curn] = blockno;
+  else {
+    struct buf* b;
+    curn -= NDIRECT;
+    if (curn % IDX_COUNT_PER_INDIRECT_BLCOK == 0) { // 需要分配新的间接索引块
+      u32 iblockno = alloc_block(in->sb);
+      in->di.iblock[NDIRECT + curn / IDX_COUNT_PER_INDIRECT_BLCOK] = iblockno;
+      b = bread(in->sb->dev, iblockno);
+      *((u32*)(b->data)) = blockno;
+    } else {
+      b = bread(in->sb->dev, in->di.iblock[NDIRECT + curn / IDX_COUNT_PER_INDIRECT_BLCOK - 1]);
+      *((u32*)(b->data) + curn % IDX_COUNT_PER_INDIRECT_BLCOK) = blockno;
+    }
+    bwrite(b);
+    brelse(b);
+  }
+  return bread(in->sb->dev, blockno);
+}
+
+/*
+Fuck it!
+这真是一个糟糕的设计,贪图简单的数据结构就需要付出效率的代价
+如果移除的索引位于间接块中,会涉及到大量的拷贝
+*/
+void
+idx_remove(struct inode* in, u32 i)
+{
+  int maxi = in->di.fsize / BSIZE;
+  if (maxi < NDIRECT) {
+    for (int j = i; j < maxi; ++j)
+      in->di.iblock[j] = in->di.iblock[j + 1];
+    in->di.iblock[maxi] = 0;
+  }
+  panic("idx_remove");
+  /*我不想考虑间接块了,希望用户不要再一个目录下创建过多目录项吧(目前最多支持382个目录项)*/
 }
 
 void
