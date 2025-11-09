@@ -81,6 +81,7 @@ sys_read(struct pt_regs* pt)
   case DEVICE:
     return devsw[t->files.f[fd]->inode->dev].read(udst, len);
   case INODE:
+    return fread(f, udst, len);
   case PIPE:
     return 0; // todo
   }
@@ -94,12 +95,14 @@ sys_write(struct pt_regs* pt)
   const void* usrc = (void*)pt->a1;
   u32 len = pt->a3;
   struct task* t = mytask();
-  switch (t->files.f[fd]->type) {
+  struct file* f = t->files.f[fd];
+  switch (f->type) {
   case NONE:
     return -1;
   case DEVICE:
     return devsw[t->files.f[fd]->inode->dev].write(usrc, len);
   case INODE:
+    return fwrite(f, usrc, len);
   case PIPE:
     return 0; // todo
   }
@@ -187,11 +190,13 @@ sys_link(struct pt_regs* pt)
 {
   return 0;
 }
+
 u64
 sys_unlink(struct pt_regs* pt)
 {
   return 0;
 }
+
 u64
 sys_mkdir(struct pt_regs* pt)
 {
@@ -202,6 +207,7 @@ sys_mkdir(struct pt_regs* pt)
     return -EINVAL;
   return create(path, DIRECTORY, -1);
 }
+
 u64
 sys_rmdir(struct pt_regs* pt)
 {
@@ -233,8 +239,17 @@ sys_rmdir(struct pt_regs* pt)
   iput(p);
   return 0;
 }
+
 u64
 sys_chdir(struct pt_regs* pt)
 {
+  if (pt->a0 == 0)
+    return -EINVAL;
+  char path[MAX_PATH_LENGTH] = { 0 };
+  if (argstr(pt->a0, path) == false)
+    return -EINVAL;
+  struct inode* in = dlookup(path);
+  iput(mytask()->cwd);
+  mytask()->cwd = in;
   return 0;
 }

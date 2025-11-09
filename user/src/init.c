@@ -18,6 +18,8 @@ main(void)
   //   wait(&status);
   // }
   mkdir("tmp");
+  chdir("tmp");
+  chdir("..");
   rmdir("tmp");
 
   close(fd);
