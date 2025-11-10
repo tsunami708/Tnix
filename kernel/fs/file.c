@@ -34,7 +34,7 @@ bool
 fopen(struct file* f, const char* path)
 {
   f->inode = dlookup(path);
-  if (!f->inode)
+  if (! f->inode)
     return false;
   f->size = f->inode->di.fsize;
   f->off = 0;
@@ -101,7 +101,7 @@ fread(struct file* f, void* buf, u32 bytes)
   u32 pend_bytes = min(bytes, f->size - pcur), done_bytes = 0;
 
   struct buf* b;
-  while (pend_bytes > 0) {
+  while (pend_bytes) {
     u32 len = min(BSIZE - pcur % BSIZE, pend_bytes);
     b = bread(f->inode->sb->dev, blockno_of_data(f->inode, pcur));
     memcpy(buf + done_bytes, b->data + pcur % BSIZE, len);
@@ -118,5 +118,28 @@ fread(struct file* f, void* buf, u32 bytes)
 u32
 fwrite(struct file* f, const void* buf, u32 bytes)
 {
-  return 0; // ? todo
+  struct buf* b;
+  u32 pcur = f->off;
+  if (f->size == pcur) { // 扩容(申请新的数据块)
+    b = data_block_alloc(f->inode);
+    if (b == NULL)
+      return 0;
+  }
+  u32 pend_bytes = min(bytes, f->size - pcur), done_bytes = 0;
+
+  while (pend_bytes) {
+    u32 len = min(BSIZE - pcur % BSIZE, pend_bytes);
+    b = bread(f->inode->sb->dev, blockno_of_data(f->inode, pcur));
+    memcpy(b->data + pcur % BSIZE, buf + done_bytes, len);
+    bwrite(b);
+    brelse(b);
+    done_bytes += len;
+    pend_bytes -= len;
+    pcur += len;
+  }
+
+  f->off += done_bytes;
+  f->size += done_bytes;
+  fupdate(f);
+  return done_bytes;
 }

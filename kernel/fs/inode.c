@@ -131,15 +131,35 @@ ialloc(struct superblock* sb)
 void
 ifree(struct inode* inode)
 {
+  struct buf* b;
   struct superblock* sb = inode->sb;
+  for (int i = 0;; ++i) {
+    if (inode->di.iblock[i] == 0)
+      break;
+
+    if (i >= NDIRECT) {
+      b = bread(sb->dev, inode->di.iblock[i]);
+      u64* idx = (void*)b->data;
+      for (int j = 0;; ++j) {
+        if (*(idx + j) == 0)
+          break;
+        free_block(sb, *(idx + j));
+        *(idx + j) = 0;
+      }
+    }
+
+    free_block(sb, inode->di.iblock[i]);
+    inode->di.iblock[i] = 0;
+  }
+
   u32 i = imap_blockno_of_inode(inode);
-  struct buf* buf = read_imap(sb, i);
+  b = read_imap(sb, i);
   u32 k = imap_offset_of_inode(inode);
-  u8* section = (void*)buf->data;
+  u8* section = (void*)b->data;
   section += k / 8;
   *section &= ~(1UL << (k % 8));
-  bwrite(buf);
-  brelse(buf);
+  bwrite(b);
+  brelse(b);
 }
 
 
