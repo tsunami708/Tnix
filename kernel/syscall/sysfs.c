@@ -6,6 +6,7 @@
 #include "fs/bio.h"
 #include "task/task.h"
 #include "trap/pt_reg.h"
+#include "util/string.h"
 #include "syscall/syscall.h"
 
 struct dev_op devsw[NDEV];
@@ -74,10 +75,12 @@ sys_read(struct pt_regs* pt)
   struct task* t = mytask();
   struct file* f = t->files.f[fd];
   if (f == NULL)
-    return -1;
+    return -EINVAL;
+  if ((f->mode & O_RDONLY) == 0 || (f->mode & O_RDWR) == 0)
+    return -EACCES;
   switch (f->type) {
   case NONE:
-    return -1;
+    return -EINVAL;
   case DEVICE:
     return devsw[t->files.f[fd]->inode->dev].read(udst, len);
   case INODE:
@@ -96,9 +99,13 @@ sys_write(struct pt_regs* pt)
   u32 len = pt->a3;
   struct task* t = mytask();
   struct file* f = t->files.f[fd];
+  if (f == NULL)
+    return -EINVAL;
+  if ((f->mode & O_WRONLY) == 0 || (f->mode & O_RDWR) == 0)
+    return -EACCES;
   switch (f->type) {
   case NONE:
-    return -1;
+    return -EINVAL;
   case DEVICE:
     return devsw[t->files.f[fd]->inode->dev].write(usrc, len);
   case INODE:
@@ -113,35 +120,34 @@ u64
 sys_mknod(struct pt_regs* pt)
 {
   if (pt->a0 == 0)
-    return -1;
+    return -EINVAL;
   char path[MAX_PATH_LENGTH] = { 0 };
   if (argstr(pt->a0, path) == false)
-    return -1;
-  if (create(path, CHAR, pt->a1) == false)
-    return -1;
-  return 0;
+    return -EINVAL;
+  return create(path, CHAR, pt->a1);
 }
 
 u64
 sys_open(struct pt_regs* pt)
 {
   if (pt->a0 == 0)
-    return -1;
+    return -EINVAL;
   char path[MAX_PATH_LENGTH] = { 0 };
   if (argstr(pt->a0, path) == false)
-    return -1;
+    return -EINVAL;
   int mode = pt->a1;
+  if ((mode & O_RDONLY) && (mode & O_WRONLY) && ((mode & O_RDONLY) == 0))
+    return -EINVAL;
   struct inode* in = dlookup(path);
   if (in == NULL) {
-    if (mode & O_CREAT) {
-      if (create(path, REGULAR, -1) == false)
-        return -1;
-    } else
-      return -1;
+    if (mode & O_CREAT)
+      return create(path, REGULAR, -1);
+    else
+      return -ENOENT;
   }
   if (in->di.type == DIRECTORY) {
     iput(in);
-    return -1;
+    return -EISDIR;
   }
 
   struct file* f = falloc();
@@ -162,7 +168,7 @@ sys_dup(struct pt_regs* pt)
   struct task* t = mytask();
   int fd = pt->a0;
   if (t->files.f[fd] == NULL)
-    return -1;
+    return -EINVAL;
   u64 r = t->files.i;
   fdup(t->files.f[fd]);
   t->files.f[r] = t->files.f[fd];
@@ -178,7 +184,7 @@ sys_close(struct pt_regs* pt)
   struct task* t = mytask();
   int fd = pt->a0;
   if (t->files.f[fd] == NULL)
-    return -1;
+    return -EINVAL;
   fclose(t->files.f[fd]);
   t->files.f[fd] = NULL;
   t->files.i = fd;
@@ -188,12 +194,75 @@ sys_close(struct pt_regs* pt)
 u64
 sys_link(struct pt_regs* pt)
 {
+  if (pt->a0 == 0 || pt->a1 == 0)
+    return -EINVAL;
+  char oldpath[MAX_PATH_LENGTH] = { 0 }, newpath[MAX_PATH_LENGTH] = { 0 };
+  if (argstr(pt->a0, oldpath) == false || argstr(pt->a1, newpath) == false)
+    return -EINVAL;
+
+  struct inode* in = dlookup(newpath);
+  if (in) { // 目录项重复
+    iput(in);
+    return -EINVAL;
+  }
+
+  in = dlookup(oldpath);
+  if (in == NULL)
+    return -ENOENT;
+  if (in->di.type != REGULAR) {
+    iput(in);
+    return -EINVAL;
+  }
+
+  u32 inum = in->inum;
+  ++in->di.nlink;
+  iupdate(in);
+  iput(in);
+
+  char ppath1[MAX_PATH_LENGTH] = { 0 }, ppath2[MAX_PATH_LENGTH] = { 0 }, name[MAX_PATH_LENGTH] = { 0 };
+  path_split(oldpath, ppath1, name);
+  in = dlookup(ppath1);
+  dentry_add(in, inum, name);
+  iupdate(in);
+  iput(in);
+  path_split(newpath, ppath2, name);
+  if (strncmp(ppath1, ppath2, MAX_PATH_LENGTH) != 0) {
+    in = dlookup(ppath2);
+    dentry_add(in, inum, name);
+    iupdate(in);
+    iput(in);
+  }
   return 0;
 }
 
 u64
 sys_unlink(struct pt_regs* pt)
 {
+  if (pt->a0 == 0)
+    return -EINVAL;
+  char path[MAX_PATH_LENGTH] = { 0 };
+  if (argstr(pt->a0, path) == false)
+    return -EINVAL;
+  struct inode* in = dlookup(path);
+  if (in == NULL)
+    return -ENOENT;
+  if (in->di.type != REGULAR) {
+    iput(in);
+    return -EINVAL;
+  }
+  --in->di.nlink;
+  if (in->di.nlink == 0)
+    ifree(in);
+  else
+    iupdate(in);
+  iput(in);
+
+  char ppath[MAX_PATH_LENGTH] = { 0 }, name[MAX_PATH_LENGTH] = { 0 };
+  path_split(path, ppath, name);
+  in = dlookup(ppath);
+  dentry_del(in, name);
+  iupdate(in);
+  iput(in);
   return 0;
 }
 

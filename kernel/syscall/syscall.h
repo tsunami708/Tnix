@@ -51,6 +51,8 @@ enum errno {
   EISDIR,
   EFBIG,
   ENEMPTY,
+  ECHILD,
+  EACCES,
 };
 
 #endif

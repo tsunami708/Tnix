@@ -19,6 +19,8 @@ sys_fork(struct pt_regs*)
 
   struct task* p = mytask();
   struct task* c = alloc_task(p);
+  if (c == NULL)
+    return -ENOMEM;
   list_pushback(&p->childs, &c->self);
   memcpy((void*)c->kstack - PGSIZE, (void*)p->kstack - PGSIZE, PGSIZE);
   dump_context(&c->ctx);
@@ -62,7 +64,7 @@ sys_exec(struct pt_regs* pt)
     struct elfhdr eh;
     struct file* f = read_elfhdr(path, &eh);
     if (f == NULL)
-      return -1;
+      return -ENOENT;
 
     struct task* t = mytask();
     reset_vma(t);
@@ -74,7 +76,7 @@ sys_exec(struct pt_regs* pt)
     acquire_spin(&t->lock);
     context_switch(NULL, &mycpu()->ctx);
   }
-  return -1;
+  return -EINVAL;
 }
 
 u64
@@ -82,7 +84,7 @@ sys_wait(struct pt_regs* pt)
 {
   struct task* t = mytask();
   if (t->childs.next == &t->childs)
-    return -1;
+    return -ECHILD;
 
   while (1) {
     struct list_node* child = t->childs.next;
