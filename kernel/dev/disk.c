@@ -1,5 +1,5 @@
 #include "config.h"
-#include "util/types.h"
+#include "types.h"
 #include "util/spinlock.h"
 #include "util/printf.h"
 #include "util/string.h"
@@ -156,7 +156,7 @@ virtio_disk_init(void)
 
   if (*R(VIRTIO_MMIO_MAGIC_VALUE) != 0x74726976 || *R(VIRTIO_MMIO_VERSION) != 2 || *R(VIRTIO_MMIO_DEVICE_ID) != 2
       || *R(VIRTIO_MMIO_VENDOR_ID) != 0x554d4551) {
-    panic("could not find virtio disk");
+    panic("virtio_disk_init: could not find virtio disk");
   }
 
   // reset device
@@ -187,22 +187,22 @@ virtio_disk_init(void)
 
   // re-read status to ensure FEATURES_OK is set.
   status = *R(VIRTIO_MMIO_STATUS);
-  if (!(status & VIRTIO_CONFIG_S_FEATURES_OK))
-    panic("virtio disk FEATURES_OK unset");
+  if (! (status & VIRTIO_CONFIG_S_FEATURES_OK))
+    panic("virtio_disk_init: virtio disk FEATURES_OK unset");
 
   // initialize queue 0.
   *R(VIRTIO_MMIO_QUEUE_SEL) = 0;
 
   // ensure queue 0 is not in use.
   if (*R(VIRTIO_MMIO_QUEUE_READY))
-    panic("virtio disk should not be ready");
+    panic("virtio_disk_init: virtio disk should not be ready");
 
   // check maximum queue size.
   u32 max = *R(VIRTIO_MMIO_QUEUE_NUM_MAX);
   if (max == 0)
-    panic("virtio disk has no queue 0");
+    panic("virtio_disk_init: virtio disk has no queue 0");
   if (max < NUM)
-    panic("virtio disk max queue too short");
+    panic("virtio_disk_init: virtio disk max queue too short");
 
   // allocate and zero queue memory.
 
@@ -213,8 +213,8 @@ virtio_disk_init(void)
   //
 
 
-  if (!disk.desc || !disk.avail || !disk.used)
-    panic("virtio disk alloc_page");
+  if (! disk.desc || ! disk.avail || ! disk.used)
+    panic("virtio_disk_init: virtio disk alloc_page");
 
   //! modified
   memset(disk.desc, 0, PGSIZE);
@@ -265,9 +265,9 @@ static void
 free_desc(int i)
 {
   if (i >= NUM)
-    panic("free_desc 1");
+    panic("free_desc: i>NUM");
   if (disk.free[i])
-    panic("free_desc 2");
+    panic("free_desc: disk.free[i]");
   disk.desc[i].addr = 0;
   disk.desc[i].len = 0;
   disk.desc[i].flags = 0;
@@ -312,7 +312,7 @@ virtio_disk_rw(struct buf* b, int write)
 {
   u64 sector = b->blockno * (BSIZE / 512);
 
-  acquire_spin(&disk.vdisk_lock);
+  spin_get(&disk.vdisk_lock);
 
   // the spec's Section 5.2 says that legacy block operations use
   // three descriptors: one for type/reserved/sector, one for the
@@ -382,13 +382,13 @@ virtio_disk_rw(struct buf* b, int write)
   disk.info[idx[0]].b = 0;
   free_chain(idx[0]);
 
-  release_spin(&disk.vdisk_lock);
+  spin_put(&disk.vdisk_lock);
 }
 
 void
 virtio_disk_intr(void)
 {
-  acquire_spin(&disk.vdisk_lock);
+  spin_get(&disk.vdisk_lock);
   /*
     ! 如果目标线程正在因硬盘事件执行sleep,这条语句可以防止唤醒丢失,保证sleep操作的原子性
   */
@@ -411,7 +411,7 @@ virtio_disk_intr(void)
     int id = disk.used->ring[disk.used_idx % NUM].id;
 
     if (disk.info[id].status != 0)
-      panic("virtio_disk_intr status");
+      panic("virtio_disk_intr: status");
 
     struct buf* b = disk.info[id].b;
     b->disk = 0; // disk is done with buf
@@ -420,7 +420,7 @@ virtio_disk_intr(void)
     disk.used_idx += 1;
   }
 
-  release_spin(&disk.vdisk_lock);
+  spin_put(&disk.vdisk_lock);
 }
 
 

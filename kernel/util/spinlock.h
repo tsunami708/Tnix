@@ -1,5 +1,5 @@
 #pragma once
-#include "util/types.h"
+#include "types.h"
 
 struct cpu;
 
@@ -9,7 +9,7 @@ struct spinlock {
   struct cpu* cpu;
 };
 
-void acquire_spin(struct spinlock* lock);
-void release_spin(struct spinlock* lock);
+void spin_get(struct spinlock* lock);
+void spin_put(struct spinlock* lock);
 
 #define INIT_SPINLOCK(name) struct spinlock name = { .lname = #name, .locked = false, .cpu = NULL }

@@ -33,9 +33,9 @@ static void
 do_vmmap(pagetable_t ptb, u64 va, u64 pa, u64 size, u16 attr, i8 gra, struct task* ut)
 {
   if (va % PGSIZE || pa % PGSIZE)
-    panic("vmmap not aligned");
+    panic("do_vmmap: not aligned");
   if (va + size > VA_TOP || pa + size > PHY_TOP)
-    panic("out of range");
+    panic("do_vmmap: out of range");
   u64 delta;
   switch (gra) {
   case S_PAGE:
@@ -48,7 +48,7 @@ do_vmmap(pagetable_t ptb, u64 va, u64 pa, u64 size, u16 attr, i8 gra, struct tas
     delta = GPGSIZE;
     break; // 1GB
   default:
-    panic("vmmap unknown gra");
+    panic("do_vmmap: unknown gra");
   }
 
   u64 bound = align_up(va + size, delta);
@@ -64,7 +64,7 @@ do_vmmap(pagetable_t ptb, u64 va, u64 pa, u64 size, u16 attr, i8 gra, struct tas
         *pte = ((pa >> 12) << 10) | PTE_V | attr;
         break;
       }
-      if (!(*pte & PTE_V)) { // 需要创建非叶子 PTE（指向下一级页表）
+      if (! (*pte & PTE_V)) { // 需要创建非叶子 PTE（指向下一级页表）
         struct page* p = alloc_page();
         u64 new_pt_pa = pha(p);
         if (ut) // 非内核页表映射
@@ -104,9 +104,9 @@ void
 vmunmap(pagetable_t ptb, u64 va, u64 size) //! 只考虑了4KB的页
 {
   if (va % PGSIZE)
-    panic("vmunmap not aligned");
+    panic("vmunmap: not aligned");
   if (va + size > VA_TOP)
-    panic("out of range");
+    panic("vmunmap: out of range");
 
   u64 bound = align_up(va + size, PGSIZE);
   for (; va < bound; va += PGSIZE) {
@@ -117,7 +117,7 @@ vmunmap(pagetable_t ptb, u64 va, u64 size) //! 只考虑了4KB的页
       u64 vpn = va_level(va, level);
       pte = &cur[vpn];
 
-      if (!(*pte & PTE_V))
+      if (! (*pte & PTE_V))
         break;
 
       if (level == 0) {
@@ -155,7 +155,7 @@ walk(pagetable_t ptb, u64 va_base, i8 level)
 {
   for (u64 i = 0; i < 512; ++i) {
     pte_t pte = ptb[i];
-    if (!(pte & PTE_V))
+    if (! (pte & PTE_V))
       continue;
 
     u64 va = va_base | (i << (12 + 9 * level));
@@ -200,7 +200,7 @@ get_pte(pagetable_t ptb, u64 va)
     u64 vpn = va_level(va, level);
     pte = &cur[vpn];
 
-    if (!(*pte & PTE_V))
+    if (! (*pte & PTE_V))
       return NULL;
 
     if (*pte & (PTE_R | PTE_W | PTE_X))
@@ -219,7 +219,7 @@ va_to_pa(pagetable_t ptb, u64 va, pte_t** p) // ?目前只适用于4KB页
   if (pte == NULL)
     return 0;
 
-  if (!(*pte & (PTE_R | PTE_W | PTE_X)))
+  if (! (*pte & (PTE_R | PTE_W | PTE_X)))
     return 0;
 
   if (p)
@@ -275,6 +275,7 @@ init_page(void)
 {
   if (cpuid() == 0) {
     kernel_pgt = (pagetable_t)pha(alloc_page());
+    svmmap(kernel_pgt, POWER, POWER, POWER_SIZE, PTE_R | PTE_W, NULL);
     svmmap(kernel_pgt, CLINT, CLINT, CLINT_SIZE, PTE_R | PTE_W, NULL);
     svmmap(kernel_pgt, PLIC, PLIC, PLIC_SIZE, PTE_R | PTE_W, NULL);
     svmmap(kernel_pgt, UART0, UART0, UART0_SIZE, PTE_R | PTE_W, NULL);

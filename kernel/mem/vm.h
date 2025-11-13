@@ -1,5 +1,5 @@
 #pragma once
-#include "util/types.h"
+#include "types.h"
 
 #define S_PAGE 0 // 4KB
 #define M_PAGE 1 // 2MB

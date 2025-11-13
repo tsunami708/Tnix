@@ -1,4 +1,6 @@
 #include "config.h"
+#include "types.h"
+#include "util/sleeplock.h"
 
 #define RHR 0
 #define THR 0
@@ -63,6 +65,28 @@ uart_put_syn(char c)
   while ((r_reg(LSR) & LSR_W) == 0)
     ;
   w_reg(THR, c);
+}
+
+struct spinlock;
+static struct sleeplock tx = { .lname = "tx" };
+extern void sleep(void* chan, struct spinlock* lock);
+extern void copy_from_user(void* kdst, const void* usrc, u32 bytes);
+void
+uart_write(const char* ustr, u32 len)
+{
+  static char buf[32] = { 0 };
+  sleep_get(&tx);
+  while (len) {
+    u32 size = min(len, sizeof(buf));
+    copy_from_user(buf, ustr, size);
+    for (int i = 0; i < size; ++i) {
+      while ((r_reg(LSR) & LSR_W) == 0)
+        sleep((void*)UART0, NULL);
+      w_reg(THR, buf[i]);
+    }
+    len -= size;
+  }
+  sleep_put(&tx);
 }
 
 void

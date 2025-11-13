@@ -46,7 +46,7 @@ constexpr u32 MAX_DATA_BLOCKNO = MIN_DATA_BLOCKNO + DATA_BLOCK_NUMBER;
 constexpr u64 IMAGE_SIZE = BSIZE + BSIZE + IMAP_SIZE + BMAP_SIZE + DINODES_SIZE + DATA_BLOCK_NUMBER * BSIZE;
 
 u32 free_inum = 0;
-u32 free_blockno = MIN_DATA_BLOCKNO;
+u32 bfreeno = MIN_DATA_BLOCKNO;
 int disk_fd = -1;
 
 u8 imap[IMAP_SIZE]{};
@@ -147,18 +147,18 @@ dinode_alloc(void)
 u32
 block_alloc(void)
 {
-  if (free_blockno > MAX_DATA_BLOCKNO) {
+  if (bfreeno > MAX_DATA_BLOCKNO) {
     printf("file too big\n");
     exit(1);
   }
 
-  u32 r = free_blockno;
+  u32 r = bfreeno;
 
-  u32 byte_off = (free_blockno - MIN_DATA_BLOCKNO) / 8;
-  u8 bit_off = (free_blockno - MIN_DATA_BLOCKNO) % 8;
+  u32 byte_off = (bfreeno - MIN_DATA_BLOCKNO) / 8;
+  u8 bit_off = (bfreeno - MIN_DATA_BLOCKNO) % 8;
   bmap[byte_off] |= (1U << bit_off);
 
-  ++free_blockno;
+  ++bfreeno;
   return r;
 }
 
@@ -185,7 +185,7 @@ reg_meta_copy(struct dirent* d)
   }
 
   i = 0;
-  while (i < NIDIRECT && fs.st_size > 0) {
+  while (i < NINDIRECT && fs.st_size > 0) {
     di->iblock[i + NDIRECT] = block_alloc();
     u32 indirect_index_block[BSIZE / sizeof(u32)] = { 0 };
     for (int j = 0; j < sizeof(indirect_index_block) / sizeof(u32) && fs.st_size > 0; ++j) {
@@ -222,7 +222,7 @@ reg_data_copy(struct dirent* d, u32 inum)
     write(disk_fd, buf, BSIZE);
   }
 
-  for (int i = 0; i < NIDIRECT && di->iblock[i + NDIRECT] > 0; ++i) {
+  for (int i = 0; i < NINDIRECT && di->iblock[i + NDIRECT] > 0; ++i) {
     u32 idx[BSIZE / sizeof(u32)] = { 0 };
     lseek(disk_fd, di->iblock[i + NDIRECT] * BSIZE, SEEK_SET);
     read(disk_fd, idx, sizeof(idx));
@@ -279,7 +279,7 @@ directory_copy(const char* path, u32 pinum, bool root)
     dsize -= BSIZE;
   }
   i = 0;
-  while (i < NIDIRECT && dsize > 0) {
+  while (i < NINDIRECT && dsize > 0) {
     di->iblock[i + NDIRECT] = block_alloc();
     u32 indirect_index_block[BSIZE / sizeof(u32)] = { 0 };
     for (int j = 0; j < sizeof(indirect_index_block) / sizeof(u32) && dsize > 0; ++j) {
@@ -331,7 +331,7 @@ directory_copy(const char* path, u32 pinum, bool root)
     write(disk_fd, dts, sizeof(dts));
   }
 
-  for (int i = 0; i < NIDIRECT && di->iblock[i + NDIRECT] > 0; ++i) {
+  for (int i = 0; i < NINDIRECT && di->iblock[i + NDIRECT] > 0; ++i) {
     u32 idx[BSIZE / sizeof(u32)] = { 0 };
     lseek(disk_fd, di->iblock[i + NDIRECT] * BSIZE, SEEK_SET);
     read(disk_fd, idx, sizeof(idx));

@@ -1,3 +1,4 @@
+#include "errno.h"
 #include "syscall/syscall.h"
 #include "trap/pt_reg.h"
 #include "util/string.h"
@@ -31,7 +32,7 @@ sys_fork(struct pt_regs*)
     c->state = READY;
     return c->pid;
   } else {
-    release_spin(&mytask()->lock);
+    spin_put(&mytask()->lock);
     return 0;
   }
 }
@@ -49,7 +50,7 @@ sys_exit(struct pt_regs* pt)
 
   print("process %d done\n", t->pid);
 
-  acquire_spin(&t->lock);
+  spin_get(&t->lock);
   context_switch(&t->ctx, &mycpu()->ctx);
   return 0;
 }
@@ -64,7 +65,7 @@ sys_exec(struct pt_regs* pt)
     struct elfhdr eh;
     struct file* f = read_elfhdr(path, &eh);
     if (f == NULL)
-      return -ENOENT;
+      return -EPATH;
 
     struct task* t = mytask();
     reset_vma(t);
@@ -73,7 +74,7 @@ sys_exec(struct pt_regs* pt)
     t->ctx.ra = (u64)first_sched;
     t->ctx.sp = t->kstack;
     t->state = READY;
-    acquire_spin(&t->lock);
+    spin_get(&t->lock);
     context_switch(NULL, &mycpu()->ctx);
   }
   return -EINVAL;

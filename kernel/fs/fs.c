@@ -13,69 +13,72 @@ struct superblock rfs;
 void
 read_superblock(dev_t dev, struct superblock* sb)
 {
-  struct buf* buf = bread(dev, 1);
-  memcpy(sb, buf->data, sizeof(struct superblock));
-  brelse(buf);
-}
-
-struct buf*
-read_imap(struct superblock* sb, u32 i)
-{
-  if (sb->inodes - sb->imap <= i)
-    panic("read_imap out of range");
-  return bread(sb->dev, i + sb->imap);
+  struct buf* b = bread(dev, 1);
+  memcpy(sb, b->data, sizeof(struct superblock));
+  brelse(b);
 }
 struct buf*
-read_bmap(struct superblock* sb, u32 i)
+read_nth_imap(struct superblock* sb, u32 n)
 {
-  if (sb->blocks - sb->bmap <= i)
-    panic("read_bmap out of range");
-  return bread(sb->dev, i + sb->bmap);
+  if (sb->inodes - sb->imap <= n)
+    panic("read_nth_imap: out of range");
+  return bread(sb->dev, n + sb->imap);
+}
+struct buf*
+read_nth_bmap(struct superblock* sb, u32 n)
+{
+  if (sb->blocks - sb->bmap <= n)
+    panic("read_nth_bmap: out of range");
+  return bread(sb->dev, n + sb->bmap);
 }
 
+/*从文件系统sb中申请一个数据块并持久化将bmap对应比特位设置为1*/
 u32
-alloc_block(struct superblock* sb)
+balloc(struct superblock* sb)
 {
-  struct buf* buf;
-  int total = sb->blocks - sb->bmap;
-  for (int i = 0; i < total; ++i) {
-    buf = read_bmap(sb, i);
-    u64* section = (void*)buf->data;
+  struct buf* b;
+  int bmap_blockcnt = sb->blocks - sb->bmap;
+  for (int i = 0; i < bmap_blockcnt; ++i) {
+    b = read_nth_bmap(sb, i);
+    u64* section = (void*)b->data;
 
-    int j;
-    for (j = 0; j < BSIZE / 8; ++j) {
-      if ((*(section + j) & 0xFFFFFFFFFFFFFFFF) != 0xFFFFFFFFFFFFFFFF) {
-        section += j;
+    int j = 0;
+    for (; j < BSIZE / 8; ++j) {
+      if ((*(section) & 0xFFFFFFFFFFFFFFFFUL) != 0xFFFFFFFFFFFFFFFFUL)
         break;
-      }
+      ++section;
     }
     if (j == BSIZE / 8) {
-      brelse(buf);
+      brelse(b);
       continue;
     }
 
     for (int k = 0; k < 64; ++k) {
       if ((*section & (1UL << k)) == 0) {
         *section |= 1UL << k;
-        bwrite(buf);
-        brelse(buf);
-        return i * BSIZE + j * 8 + k + sb->blocks;
+        bwrite(b);
+        brelse(b);
+        return i * BIT_CNT_PER_BLOCK + j * sizeof(u64) + k + sb->blocks;
       }
     }
   }
-  panic("block exhausted");
+  panic("balloc: space exhausted");
 }
+/*从文件系统中释放块号为blockno的数据块并持久化将bmap对应比特位设置为0*/
 void
-free_block(struct superblock* sb, u32 blockno)
+bfree(struct superblock* sb, u32 blockno)
 {
-  int i = (blockno - sb->blocks) / BSIZE;
-  struct buf* buf = read_bmap(sb, i);
-  int k = (blockno - sb->blocks) % BSIZE;
-  u64* section = (void*)buf->data;
+  int i = (blockno - sb->blocks) / BIT_CNT_PER_BLOCK;
+  int k = (blockno - sb->blocks) % BIT_CNT_PER_BLOCK;
+
+  struct buf* b = read_nth_bmap(sb, i);
+  u64* section = (void*)b->data;
   section += k / 8;
+  if (((*section) & (1UL << (k % 8))) == 0)
+    panic("bfree: double free");
   *section &= ~(1UL << (k % 8));
-  bwrite(buf);
-  brelse(buf);
+  bwrite(b);
+  brelse(b);
 }
 
 void

@@ -17,9 +17,9 @@ static u16
 alloc_tid()
 {
   u16 r;
-  acquire_spin(&ti);
+  spin_get(&ti);
   r = tid++;
-  release_spin(&ti);
+  spin_put(&ti);
   return r;
 }
 
@@ -79,19 +79,19 @@ task_init(struct task* t, struct task* parent)
 struct task*
 alloc_task(struct task* p)
 {
-  acquire_spin(&tq);
+  spin_get(&tq);
   for (int i = 0; i < NPROC; ++i) {
-    acquire_spin(&task_queue[i].lock);
+    spin_get(&task_queue[i].lock);
     if (task_queue[i].state == FREE) {
       task_queue[i].state = INIT;
-      release_spin(&task_queue[i].lock);
-      release_spin(&tq);
+      spin_put(&task_queue[i].lock);
+      spin_put(&tq);
       task_init(task_queue + i, p);
       return task_queue + i;
     }
-    release_spin(&task_queue[i].lock);
+    spin_put(&task_queue[i].lock);
   }
-  panic("task too much");
+  panic("alloc_task: task too much");
 }
 
 void

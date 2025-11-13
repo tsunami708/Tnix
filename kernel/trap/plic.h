@@ -15,7 +15,7 @@
 #pragma once
 #include "config.h"
 
-#include "util/types.h"
+#include "types.h"
 #include "task/cpu.h"
 
 #define PLIC_BASE PLIC

@@ -35,14 +35,14 @@ init_memory(void)
 struct page*
 alloc_page()
 {
-  acquire_spin(&mem_spin);
+  spin_get(&mem_spin);
   if (pages_head.next == &pages_head)
-    panic("memory exhausted");
+    panic("alloc_page memory exhausted");
   struct page* p = container_of(pages_head.next, struct page, page_node);
 
   p->inuse = true;
   list_remove(pages_head.next);
-  release_spin(&mem_spin);
+  spin_put(&mem_spin);
   memset((void*)p->paddr, 0, PGSIZE);
   return p;
 }
@@ -50,10 +50,10 @@ alloc_page()
 void
 free_page(struct page* p)
 {
-  acquire_spin(&mem_spin);
-  if (!p->inuse)
-    panic("double free page");
+  spin_get(&mem_spin);
+  if (! p->inuse)
+    panic("free_page double free page");
   p->inuse = false;
   list_pushback(&pages_head, &p->page_node);
-  release_spin(&mem_spin);
+  spin_put(&mem_spin);
 }

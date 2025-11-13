@@ -1,5 +1,5 @@
 #pragma once
-#include "util/types.h"
+#include "types.h"
 
 struct task;
 
@@ -9,8 +9,8 @@ struct sleeplock {
   struct task* task;
 };
 
-bool holding_sleep(struct sleeplock* lock);
-void acquire_sleep(struct sleeplock* lock);
-void release_sleep(struct sleeplock* lock);
+bool sleep_holding(struct sleeplock* lock);
+void sleep_get(struct sleeplock* lock);
+void sleep_put(struct sleeplock* lock);
 
 #define INIT_SLEEPLOCK(name) struct sleeplock name = { .lname = #name, .locked = false, .task = NULL }

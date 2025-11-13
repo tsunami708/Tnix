@@ -1,6 +1,6 @@
 #pragma once
 #include "config.h"
-#include "util/types.h"
+#include "types.h"
 #include "util/list.h"
 #include "util/spinlock.h"
 #include "task/cpu.h"

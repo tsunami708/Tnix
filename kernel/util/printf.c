@@ -65,7 +65,7 @@ static void
 printint(i8 ns, struct var_para* vp)
 {
   int i = 0;
-  i64 num = fetch_para(vp);
+  long num = fetch_para(vp);
   if (num < 0)
     uart_put_syn('-');
   char buf[21] = { 0 };
@@ -87,7 +87,7 @@ print(const char* fmt, ...)
 {
   struct var_para vp;
   parse_para(vp);
-  acquire_spin(&pr);
+  spin_get(&pr);
   while (*fmt != '\0') {
     if (*fmt == '%') {
       ++fmt;
@@ -115,7 +115,7 @@ print(const char* fmt, ...)
     uart_put_syn(*fmt);
     ++fmt;
   }
-  release_spin(&pr);
+  spin_put(&pr);
 }
 
 void
@@ -123,7 +123,7 @@ panic(const char* fmt, ...)
 {
   struct var_para vp;
   parse_para(vp);
-  acquire_spin(&pr); // 故意不释放锁
+  spin_get(&pr); // 故意不释放锁
   printstr("\n\npanic: ");
   while (*fmt != '\0') {
     if (*fmt == '%') {

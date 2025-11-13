@@ -1,5 +1,5 @@
 #pragma once
-#include "util/types.h"
+#include "types.h"
 
 char uart_get(void);
 void uart_put_syn(char c);

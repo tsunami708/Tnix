@@ -37,6 +37,12 @@ write:
   ecall
   ret
 
+.global lseek
+lseek:
+  li a7, SYS_LSEEK
+  ecall
+  ret
+
 .global open
 open:
   li a7, SYS_OPEN

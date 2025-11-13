@@ -6,8 +6,7 @@
 #include "util/string.h"
 
 
-#define IPB (BSIZE / sizeof(struct dinode)) // 每块中的dinode个数
-#define BPB (BSIZE * 8)                     // 每块比特位数
+#define DINODE_CNT_PER_BLOCK (BSIZE / sizeof(struct dinode))
 
 
 static struct {
@@ -19,22 +18,22 @@ static struct {
 static inline u32
 blockno_of_inode(struct inode* inode)
 {
-  return inode->sb->inodes + inode->inum / IPB;
+  return inode->sb->inodes + inode->inum / DINODE_CNT_PER_BLOCK;
 }
 static inline u32
 offset_of_inode(struct inode* inode) // dinode在其磁盘块上的偏移
 {
-  return inode->inum % IPB;
+  return inode->inum % DINODE_CNT_PER_BLOCK;
 }
 static inline u32
 imap_blockno_of_inode(struct inode* inode)
 {
-  return inode->sb->imap + inode->inum / BPB;
+  return inode->sb->imap + inode->inum / BIT_CNT_PER_BLOCK;
 }
 static inline u32
 imap_offset_of_inode(struct inode* inode) // dinode对于imap位在其磁盘块上的偏移
 {
-  return inode->inum % BPB;
+  return inode->inum % BIT_CNT_PER_BLOCK;
 }
 
 bool
@@ -49,31 +48,24 @@ iexist(struct superblock* sb, u32 inum)
 }
 
 
-// * 从磁盘读取文件的属性信息
-// ! 请确保线程持有inode的阻塞锁和inode存在于磁盘
-void
+static void
 iread(struct inode* inode)
 {
-  if (! holding_sleep(&inode->slep))
-    panic("read dinode,but not hold lock");
-
+  sleep_get(&inode->slep);
   u32 blockno = blockno_of_inode(inode);
-
   struct buf* buf = bread(inode->sb->dev, blockno);
   struct dinode* di = (void*)buf->data;
   di += offset_of_inode(inode);
   memcpy(&inode->di, di, sizeof(struct dinode));
   brelse(buf);
+  sleep_put(&inode->slep);
 }
 
-// * 更新文件属性到磁盘
-// ! 请确保线程持有inode的阻塞锁和inode存在于磁盘
+
 void
 iupdate(struct inode* inode)
 {
-  // if (! holding_sleep(&inode->slep))
-  //   panic("update dinode,but not hold lock");
-  acquire_sleep(&inode->slep);
+  sleep_get(&inode->slep);
 
   u32 blockno = blockno_of_inode(inode);
   struct buf* buf = bread(inode->sb->dev, blockno);
@@ -83,15 +75,16 @@ iupdate(struct inode* inode)
   bwrite(buf);
   brelse(buf);
 
-  release_sleep(&inode->slep);
+  sleep_put(&inode->slep);
 }
 
-//* 创建文件
+
 u32
 ialloc(struct superblock* sb)
 {
-  struct buf* buf;
-  int total = sb->inodes - sb->imap; // 文件系统imap总块数
+  struct buf* b;
+  u64* section;
+  int imap_blockcnt = sb->inodes - sb->imap;
 
   /*
     遍历imap块
@@ -99,62 +92,80 @@ ialloc(struct superblock* sb)
     若某个section不全为1,则说明存在空闲inode,进行1bit为单位细粒度查找
     找到即停止后续查找并刷盘返回
   */
-  for (int i = 0; i < total; ++i) {
-    buf = read_imap(sb, i);
-    u64* section = (void*)buf->data;
+  for (int i = 0; i < imap_blockcnt; ++i) {
+    b = read_nth_imap(sb, i);
+    section = (void*)b->data;
 
-    int j;
-    for (j = 0; j < BSIZE / 8; ++j) {
-      if ((*(section + j) & 0xFFFFFFFFFFFFFFFF) != 0xFFFFFFFFFFFFFFFF) {
-        section += j;
+    int j = 0;
+    for (; j < BSIZE / 8; ++j) {
+      if ((*(section) & 0xFFFFFFFFFFFFFFFFUL) != 0xFFFFFFFFFFFFFFFFUL)
         break;
-      }
+      ++section;
     }
     if (j == BSIZE / 8) {
-      brelse(buf);
+      brelse(b);
       continue;
     }
 
     for (int k = 0; k < 64; ++k) {
       if ((*section & (1UL << k)) == 0) {
         *section |= 1UL << k;
-        bwrite(buf);
-        brelse(buf);
-        return i * BPB + j * 8 + k; // inum
+        bwrite(b);
+        brelse(b);
+        return i * BIT_CNT_PER_BLOCK + j * sizeof(u64) + k; // inum
       }
     }
   }
-  panic("dinode exhausted");
+  panic("ialloc: dinode exhausted");
 }
 
-//* 删除文件
+
 void
-ifree(struct inode* inode)
+itrunc(struct inode* in)
 {
+  in->di.fsize = 0;
+
   struct buf* b;
-  struct superblock* sb = inode->sb;
-  for (int i = 0;; ++i) {
-    if (inode->di.iblock[i] == 0)
+  struct superblock* sb = in->sb;
+
+  for (int i = 0; i < NDIRECT + NINDIRECT; ++i) {
+    if (in->di.iblock[i] == 0)
       break;
 
+    b = bread(sb->dev, in->di.iblock[i]);
     if (i >= NDIRECT) {
-      b = bread(sb->dev, inode->di.iblock[i]);
-      u64* idx = (void*)b->data;
-      for (int j = 0;; ++j) {
-        if (*(idx + j) == 0)
+      u32* idx = (void*)b->data;
+      for (int j = 0; j < IDX_CNT_PER_INDIRECT_BLCOK; ++j) {
+        if (*idx == 0)
           break;
-        free_block(sb, *(idx + j));
-        *(idx + j) = 0;
+        struct buf* bb = bread(sb->dev, *idx);
+        bzero(bb);
+        brelse(bb);
+        bfree(sb, *idx);
+        ++idx;
       }
     }
-
-    free_block(sb, inode->di.iblock[i]);
-    inode->di.iblock[i] = 0;
+    bzero(b);
+    brelse(b);
+    bfree(sb, in->di.iblock[i]);
+    in->di.iblock[i] = 0;
   }
+}
 
-  u32 i = imap_blockno_of_inode(inode);
-  b = read_imap(sb, i);
-  u32 k = imap_offset_of_inode(inode);
+
+void
+ifree(struct inode* in)
+{
+  itrunc(in);
+  in->di.type = UNUSE;
+  iupdate(in);
+
+  struct buf* b;
+  struct superblock* sb = in->sb;
+
+  u32 i = imap_blockno_of_inode(in);
+  b = read_nth_imap(sb, i - sb->imap);
+  u32 k = imap_offset_of_inode(in);
   u8* section = (void*)b->data;
   section += k / 8;
   *section &= ~(1UL << (k % 8));
@@ -166,61 +177,59 @@ ifree(struct inode* inode)
 struct inode*
 iget(struct superblock* sb, u32 inum)
 {
-  acquire_spin(&icache.lock);
+  spin_get(&icache.lock);
   for (int i = 0; i < NINODE; ++i) {
-    acquire_spin(&icache.inodes[i].spin);
+    spin_get(&icache.inodes[i].spin);
     if (icache.inodes[i].sb == sb && icache.inodes[i].inum == inum) {
       ++icache.inodes[i].refc;
-      release_spin(&icache.inodes[i].spin);
-      release_spin(&icache.lock);
+      spin_put(&icache.inodes[i].spin);
+      spin_put(&icache.lock);
       return icache.inodes + i;
     }
-    release_spin(&icache.inodes[i].spin);
+    spin_put(&icache.inodes[i].spin);
   }
 
   /*
-    !涉及到阻塞的IO操作时必须要临时释放当前已经持有的所有自旋锁,
+    涉及到阻塞的IO操作时必须要临时释放当前已经持有的所有自旋锁,
     否则在多核场景下当某个线程因为IO操作被切走而后被另一个核心调度,
     在释放自旋锁的时会出现核心号不匹配的问题
   */
-  release_spin(&icache.lock);
+  spin_put(&icache.lock);
   struct inode* in = NULL;
   if (! iexist(sb, inum))
     return in;
-  acquire_spin(&icache.lock);
+  spin_get(&icache.lock);
 
   for (int i = 0; i < NINODE; ++i) {
-    acquire_spin(&icache.inodes[i].spin);
+    spin_get(&icache.inodes[i].spin);
     if (icache.inodes[i].refc == 0) {
       icache.inodes[i].refc = 1;
       icache.inodes[i].sb = sb;
       icache.inodes[i].inum = inum;
-      release_spin(&icache.inodes[i].spin);
+      spin_put(&icache.inodes[i].spin);
       in = icache.inodes + i;
       break;
     }
-    release_spin(&icache.inodes[i].spin);
+    spin_put(&icache.inodes[i].spin);
   }
-  release_spin(&icache.lock);
+  spin_put(&icache.lock);
 
   if (in == NULL)
-    panic("icache exhausted");
+    panic("iget: icache exhausted");
 
-  acquire_sleep(&in->slep);
   iread(in);
-  release_sleep(&in->slep);
   return in;
 }
 
 void
 iput(struct inode* inode)
 {
-  acquire_spin(&inode->spin);
+  spin_get(&inode->spin);
   --inode->refc;
-  release_spin(&inode->spin);
+  spin_put(&inode->spin);
 }
 
-// 获取文件的第i个数据块,i从0开始计数
+
 struct buf*
 data_block_get(struct inode* in, u32 i)
 {
@@ -228,37 +237,36 @@ data_block_get(struct inode* in, u32 i)
   if (i < NDIRECT)
     r = bread(in->sb->dev, in->di.iblock[i]);
   else {
-    struct buf* b = bread(in->sb->dev, in->di.iblock[(i - NDIRECT) / IDX_COUNT_PER_INDIRECT_BLCOK]);
-    u32 n = *(((u32*)b->data) + (i - NDIRECT) % IDX_COUNT_PER_INDIRECT_BLCOK);
+    struct buf* b = bread(in->sb->dev, in->di.iblock[NDIRECT + (i - NDIRECT) / IDX_CNT_PER_INDIRECT_BLCOK]);
+    u32 blockno = *(((u32*)b->data) + (i - NDIRECT) % IDX_CNT_PER_INDIRECT_BLCOK);
     brelse(b);
-    r = bread(in->sb->dev, n);
+    r = bread(in->sb->dev, blockno);
   }
   return r;
 }
 
-// 为文件增加一个数据块(扩容),自动完成索引更新
-#define FILE_MAX_DATA_BLOCKNUM (NDIRECT + NIDIRECT * sizeof(u32))
+#define FILE_MAX_DATA_BLOCKNUM (NDIRECT + NINDIRECT * sizeof(u32))
 struct buf*
 data_block_alloc(struct inode* in)
-{
-  u32 curn = in->di.fsize / BSIZE; // 当前数据块块数
-  // in->di.fsize%BSIZE==0为真;如果为假则说明有数据块为满,内核不应该为其分配新的数据块
+{ // in->di.fsize%BSIZE==0为真;如果为假则说明有数据块为满,内核不应该为其分配新的数据块
+  u32 curn = iblock_cnt(in);
   if (curn == FILE_MAX_DATA_BLOCKNUM)
-    return NULL;
-  u32 blockno = alloc_block(in->sb);
+    panic("data_block_alloc: file too big");
+
+  u32 blockno = balloc(in->sb);
   if (curn < NDIRECT)
     in->di.iblock[curn] = blockno;
   else {
     struct buf* b;
     curn -= NDIRECT;
-    if (curn % IDX_COUNT_PER_INDIRECT_BLCOK == 0) { // 需要分配新的间接索引块
-      u32 iblockno = alloc_block(in->sb);
-      in->di.iblock[NDIRECT + curn / IDX_COUNT_PER_INDIRECT_BLCOK] = iblockno;
+    if (curn % IDX_CNT_PER_INDIRECT_BLCOK == 0) { // 需要分配新的间接索引块
+      u32 iblockno = balloc(in->sb);
+      in->di.iblock[NDIRECT + curn / IDX_CNT_PER_INDIRECT_BLCOK] = iblockno;
       b = bread(in->sb->dev, iblockno);
       *((u32*)(b->data)) = blockno;
     } else {
-      b = bread(in->sb->dev, in->di.iblock[NDIRECT + curn / IDX_COUNT_PER_INDIRECT_BLCOK - 1]);
-      *((u32*)(b->data) + curn % IDX_COUNT_PER_INDIRECT_BLCOK) = blockno;
+      b = bread(in->sb->dev, in->di.iblock[NDIRECT + curn / IDX_CNT_PER_INDIRECT_BLCOK]);
+      *((u32*)(b->data) + curn % IDX_CNT_PER_INDIRECT_BLCOK) = blockno;
     }
     bwrite(b);
     brelse(b);
@@ -267,21 +275,86 @@ data_block_alloc(struct inode* in)
 }
 
 /*
-Fuck it!
-这真是一个糟糕的设计,贪图简单的数据结构就需要付出效率的代价
-如果移除的索引位于间接块中,会涉及到大量的拷贝
+  删除一个数据块
+  仅目录文件使用(普通文件不会出现删除中间某个数据块的情况)
 */
 void
 idx_remove(struct inode* in, u32 i)
 {
-  int maxi = in->di.fsize / BSIZE;
-  if (maxi < NDIRECT) {
-    for (int j = i; j < maxi; ++j)
+  int blockcnt = iblock_cnt(in);
+  struct buf* b;
+  dev_t dev = in->sb->dev;
+
+  if (blockcnt < NDIRECT) {
+    b = bread(dev, in->di.iblock[i]);
+    bzero(b);
+    brelse(b);
+    for (int j = i; j < blockcnt; ++j)
       in->di.iblock[j] = in->di.iblock[j + 1];
-    in->di.iblock[maxi] = 0;
+  } else {
+    struct buf* nb;
+    if (i < NDIRECT) {
+      b = bread(dev, in->di.iblock[i]);
+      bzero(b);
+      brelse(b);
+      for (int j = i; j < NDIRECT - 1; ++j)
+        in->di.iblock[j] = in->di.iblock[j + 1];
+
+      b = bread(dev, in->di.iblock[NDIRECT]);
+      in->di.iblock[NDIRECT - 1] = *(u32*)b->data;
+      brelse(b);
+
+      for (int j = NDIRECT; j < NDIRECT + NINDIRECT && in->di.iblock[j]; ++j) {
+        b = bread(dev, in->di.iblock[j]);
+        u32* idx = (void*)b->data;
+        for (int k = 0; *idx && k < IDX_CNT_PER_INDIRECT_BLCOK - 1; ++k) {
+          *idx = *(idx + 1);
+          ++idx;
+        }
+        if (*idx) {
+          if (in->di.iblock[j + 1]) {
+            nb = bread(dev, in->di.iblock[j + 1]);
+            *idx = *(u32*)b->data;
+            brelse(nb);
+          } else
+            *idx = 0;
+        }
+        bwrite(b);
+        bzero(b);
+        brelse(b);
+      }
+
+    } else {
+      for (int j = NDIRECT + (i - NDIRECT) / IDX_CNT_PER_INDIRECT_BLCOK; j < NDIRECT + NINDIRECT && in->di.iblock[j];
+           ++j) {
+        b = bread(dev, in->di.iblock[j]);
+
+        u32* idx = (void*)b->data;
+        int k = 0;
+
+        if (j == NDIRECT + (i - NDIRECT) / IDX_CNT_PER_INDIRECT_BLCOK) {
+          k = (i - NDIRECT) % IDX_CNT_PER_INDIRECT_BLCOK;
+          idx += k;
+        }
+
+        for (; *idx && k < IDX_CNT_PER_INDIRECT_BLCOK - 1; ++k) {
+          *idx = *(idx + 1);
+          ++idx;
+        }
+        if (*idx) {
+          if (in->di.iblock[j + 1]) {
+            nb = bread(dev, in->di.iblock[j + 1]);
+            *idx = *(u32*)b->data;
+            brelse(nb);
+          } else
+            *idx = 0;
+        }
+        bwrite(b);
+        bzero(b);
+        brelse(b);
+      }
+    }
   }
-  panic("idx_remove");
-  /*我不想考虑间接块了,希望用户不要再一个目录下创建过多目录项吧(目前最多支持382个目录项)*/
 }
 
 void

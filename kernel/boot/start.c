@@ -1,5 +1,5 @@
 #include "config.h"
-#include "util/types.h"
+#include "types.h"
 #include "util/riscv.h"
 #include "task/cpu.h"
 struct pt_regs;
@@ -54,4 +54,10 @@ start(void)
   // 1:恢复设置MIE,把mstatus 寄存器中的MPIE 字段设置到 mstatus 寄存器的MIE
   // 2:将处理器模式设置成之前保存到MPP字段的处理器模式。
   // 3:mepc寄存器保存的值设置到PC寄存器中
+}
+
+void
+poweroff(void)
+{
+  *(volatile int*)POWER = 0x5555;
 }

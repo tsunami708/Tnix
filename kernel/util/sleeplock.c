@@ -6,16 +6,16 @@
 #include "task/sche.h"
 
 bool
-holding_sleep(struct sleeplock* lock)
+sleep_holding(struct sleeplock* lock)
 {
   return lock->locked == true && lock->task == mytask();
 }
 
 void
-acquire_sleep(struct sleeplock* lock)
+sleep_get(struct sleeplock* lock)
 {
-  if (holding_sleep(lock))
-    panic("task %s repeat acquire lock %s", mytask()->tname, lock->lname);
+  if (sleep_holding(lock))
+    panic("sleep_get: task %s ~ lock %s", mytask()->tname, lock->lname);
   while (__sync_lock_test_and_set(&lock->locked, true) != 0)
     sleep(lock, NULL);
   __sync_synchronize();
@@ -23,10 +23,10 @@ acquire_sleep(struct sleeplock* lock)
 }
 
 void
-release_sleep(struct sleeplock* lock)
+sleep_put(struct sleeplock* lock)
 {
-  if (!holding_sleep(lock))
-    panic("task %s illegal release lock %s", mytask()->tname, lock->lname);
+  if (! sleep_holding(lock))
+    panic("sleep_put: task %s ~ lock %s", mytask()->tname, lock->lname);
   lock->task = NULL;
   __sync_synchronize();
   __sync_lock_release(&lock->locked, false);

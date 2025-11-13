@@ -34,16 +34,20 @@
 #define VIRIO      0x10001000UL
 #define VIRIO_SIZE PGSIZE
 
+#define POWER      0x100000UL
+#define POWER_SIZE PGSIZE
+
 // 文件系统属性
-#define BSIZE           1024
-#define NDIRECT         12
-#define NIDIRECT        3
-#define NDEV            3
-#define ROOTDEV         0
-#define ROOTINUM        0
-#define CONSOLE         1
-#define DLENGTH         28 // 目录项名长度
-#define NFILE           16 // 进程文件打开最大数
-#define NIOBUF          16 // IO缓存块最大数
-#define NINODE          50 // ionode缓存最大数
-#define MAX_PATH_LENGTH 128
+#define BSIZE             1024
+#define NDIRECT           12
+#define NINDIRECT         3
+#define NDEV              3
+#define ROOTDEV           0
+#define ROOTINUM          0
+#define CONSOLE           1
+#define DLENGTH           28 // 目录项名长度
+#define NFILE             16 // 进程文件打开最大数
+#define NIOBUF            16 // IO缓存块最大数
+#define NINODE            50 // ionode缓存最大数
+#define MAX_PATH_LENGTH   128
+#define BIT_CNT_PER_BLOCK (BSIZE * 8)

@@ -1,5 +1,5 @@
 #include "config.h"
-#include "util/types.h"
+#include "types.h"
 #include "util/spinlock.h"
 #include "util/string.h"
 #include "util/printf.h"
@@ -14,7 +14,7 @@ extern void copy_from_user(void* kdst, const void* usrc, u32 bytes);
 #define CONSOLE_BUFFER_SIZE 128
 static struct {
   struct spinlock lock;
-  i32 r, w;
+  int r, w;
   char buf[CONSOLE_BUFFER_SIZE];
   char tb[8]; // \033序列转义缓冲区
   bool tflag; // 转义标识
@@ -60,7 +60,7 @@ try_transfer(void)
 static void
 console_putc(char ch)
 {
-  acquire_spin(&con.lock);
+  spin_get(&con.lock);
   if (! con.tflag) {
     if (ch == '\b') {
       if (con.buf[con.w - 1] != '\n' && con.w != con.r) {
@@ -82,7 +82,7 @@ console_putc(char ch)
     con.tb[con.i++] = ch;
     try_transfer();
   }
-  release_spin(&con.lock);
+  spin_put(&con.lock);
 }
 
 #define BACKSPACE 127
@@ -102,6 +102,7 @@ do_console_irq(char ch)
   case '\r':
   case '\n':
     console_putc('\n');
+    wakeup(&con.r);
     break;
   case 32 ... 126: // 可显示字符
     console_putc(ch);
@@ -119,7 +120,7 @@ do_console_irq(char ch)
 u32
 console_read(void* udst, u32 len)
 {
-  acquire_spin(&con.lock);
+  spin_get(&con.lock);
   len = min(len, CONSOLE_READABLE_LEN);
   if (len == 0)
     sleep(&con.r, &con.lock);
@@ -131,25 +132,15 @@ console_read(void* udst, u32 len)
     copy_to_user(udst + lslice1, con.buf, lslice2);
   }
   con.r = (con.r + len) % CONSOLE_BUFFER_SIZE;
-  release_spin(&con.lock);
+  spin_put(&con.lock);
   return len;
 }
+
 u32
 console_write(const void* usrc, u32 len)
 {
-  acquire_spin(&con.lock);
-  len = min(len, CONSOLE_WRITEABLE_LEN);
-  if (len == 0)
-    sleep(&con.w, &con.lock);
-  if (con.w < con.r)
-    copy_from_user(con.buf + con.w, usrc, len);
-  else {
-    u32 lslice1 = CONSOLE_BUFFER_SIZE - con.w, lslice2 = len - lslice1;
-    copy_from_user(con.buf + con.w, usrc, lslice1);
-    copy_from_user(con.buf, usrc + lslice1, lslice2);
-  }
-  con.w = (con.w + len) % CONSOLE_BUFFER_SIZE;
-  release_spin(&con.lock);
+  extern void uart_write(const char*, u32);
+  uart_write(usrc, len);
   return len;
 }
 
