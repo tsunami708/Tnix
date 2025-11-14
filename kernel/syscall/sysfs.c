@@ -125,7 +125,7 @@ sys_lseek(struct pt_regs* pt)
   struct file* f = mytask()->files.f[fd];
   if (f == NULL)
     return -EINVAL;
-  return fseek(f, off);
+  return fseek(f, off, SEEK_CUR);
 }
 
 u64

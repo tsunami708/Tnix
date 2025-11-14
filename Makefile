@@ -6,7 +6,7 @@ OBJDUMP = riscv64-linux-gnu-objdump
 
 #编译器属性
 CFLAGS = -Wall -Werror -Wno-unknown-attributes -Wstrict-prototypes -O0 -fomit-frame-pointer -ggdb -gdwarf-2
-CFLAGS += -MD -mcmodel=medany -std=gnu23
+CFLAGS += -std=gnu23
 CFLAGS += -fno-common -nostdlib -ffreestanding
 CFLAGS += -fno-builtin-strncpy -fno-builtin-strncmp -fno-builtin-strlen -fno-builtin-memset
 CFLAGS += -fno-builtin-memmove -fno-builtin-memcmp -fno-builtin-log -fno-builtin-bzero
@@ -15,9 +15,12 @@ CFLAGS += -fno-builtin-free
 CFLAGS += -fno-builtin-memcpy -Wno-main
 CFLAGS += -fno-builtin-printf -fno-builtin-fprintf -fno-builtin-vprintf
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
-CFLAGS += -fno-pie -no-pie 
 CFLAGS += -Ikernel -I.
 
+KCFLAGS := $(CFLAGS)
+KCFLAGS += -fno-pie -no-pie -MD -mcmodel=medany
+UCFLAGS := $(CFLAGS)
+UCFLAGS += -fPIE -pie 
 
 #链接器属性
 LDFLAGS = -z max-page-size=4096
@@ -76,12 +79,12 @@ $K/kernel: $(OBJS) $K/kernel.ld
 	$(OBJDUMP) -t $K/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $K/kernel.sym
 
 $K/%.o: $K/%.S
-	$(CC) $(CFLAGS) -g -c -o $@ $<
+	$(CC) $(KCFLAGS) -g -c -o $@ $<
 
 $U/src/usys.o: $U/src/usys.S
-	$(CC) $(CFLAGS) -c -o $@ $< 
+	$(CC) $(UCFLAGS) -c -o $@ $< 
 $U/bin/%: $U/src/%.c $U/src/usys.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -T user/user.ld -o $@ $^
+	$(CC) $(UCFLAGS) $(LDFLAGS) -T user/user.ld -o $@ $^
 
 
 -include \

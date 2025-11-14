@@ -14,3 +14,4 @@ typedef u32 dev_t;
 #define align_down(x, align) ((x) & ~((align) - 1))
 #define align_up(x, align)   (((x) + (align) - 1) & ~((align) - 1))
 #define min(a, b)            ((a) < (b) ? (a) : (b))
+#define max(a, b)            ((a) > (b) ? (a) : (b))

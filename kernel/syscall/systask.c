@@ -61,9 +61,14 @@ sys_exec(struct pt_regs* pt)
   if (pt->a0) {
     char path[MAX_PATH_LENGTH] = { 0 };
     if (argstr(pt->a0, path) == false)
-      return -1;
+      return -EPATH;
+
     struct elfhdr eh;
     struct file* f = read_elfhdr(path, &eh);
+    // char arg[MAX_PATH_LENGTH / 2] = { 0 };
+    // if (pt->a1)
+    //   argstr(pt->a1, arg);
+
     if (f == NULL)
       return -EPATH;
 

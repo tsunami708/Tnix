@@ -20,11 +20,10 @@ static struct {
   bool tflag; // 转义标识
   u8 i;
 } con = { .lock.lname = "console" };
-#define CONSOLE_READABLE_LEN  ((con.w - con.r + CONSOLE_BUFFER_SIZE) % CONSOLE_BUFFER_SIZE)
-#define CONSOLE_WRITEABLE_LEN ((con.r - con.w + CONSOLE_BUFFER_SIZE) % CONSOLE_BUFFER_SIZE)
-#define CONSOLE_ISFULL        ((con.w + 1) % CONSOLE_BUFFER_SIZE == con.r)
-
-
+#define console_readable_len()  ((con.w - con.r + CONSOLE_BUFFER_SIZE) % CONSOLE_BUFFER_SIZE)
+#define console_writeable_len() ((con.r - con.w + CONSOLE_BUFFER_SIZE) % CONSOLE_BUFFER_SIZE)
+#define console_isfull()        ((con.w + 1) % CONSOLE_BUFFER_SIZE == con.r)
+#define console_isempty()       (con.w == con.r)
 static void
 reset_tb(void)
 {
@@ -71,7 +70,7 @@ console_putc(char ch)
       con.tflag = true;
       con.tb[con.i++] = '\033';
     } else {
-      if (! CONSOLE_ISFULL) {
+      if (! console_isfull()) {
         con.buf[con.w] = ch;
         con.w = (con.w + 1) % CONSOLE_BUFFER_SIZE;
         uart_put_syn(ch);
@@ -101,7 +100,7 @@ do_console_irq(char ch)
     break;
   case '\r':
   case '\n':
-    console_putc('\n');
+    uart_put_syn('\n');
     wakeup(&con.r);
     break;
   case 32 ... 126: // 可显示字符
@@ -121,9 +120,9 @@ u32
 console_read(void* udst, u32 len)
 {
   spin_get(&con.lock);
-  len = min(len, CONSOLE_READABLE_LEN);
-  if (len == 0)
+  while (console_isempty())
     sleep(&con.r, &con.lock);
+  len = min(len, console_readable_len());
   if (con.r < con.w)
     copy_to_user(udst, con.buf, len);
   else {

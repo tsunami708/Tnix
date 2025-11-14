@@ -32,10 +32,13 @@ struct dev_op {
   bool valid;
 };
 
+#define SEEK_SET 0
+#define SEEK_CUR 1
+
 struct file* falloc(void);
 void fdup(struct file* f);
 void fclose(struct file* f);
-u32 fseek(struct file* f, int off);
+u32 fseek(struct file* f, int off, int whence);
 u32 fread(struct file* f, void* buf, u32 bytes, bool kernel);
 u32 fwrite(struct file* f, const void* buf, u32 bytes, bool kernel);
 #endif

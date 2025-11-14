@@ -242,7 +242,7 @@ copy_to_user(void* udst, const void* ksrc, u32 bytes)
   pte_t* pte;
   u64 paddr;
   while (pend_bytes) {
-    len = min((align_up(ud, PGSIZE) - ud), pend_bytes);
+    len = min((align_up(ud + 1, PGSIZE) - ud), pend_bytes);
     paddr = va_to_pa(mytask()->pagetable, ud, &pte);
     if (paddr == 0 || ((*pte) & (PTE_W | PTE_U)) != (PTE_W | PTE_U))
       kill();
@@ -261,7 +261,7 @@ copy_from_user(void* kdst, const void* usrc, u32 bytes)
   pte_t* pte;
   u64 paddr;
   while (pend_bytes > 0) {
-    len = min((align_up(us, PGSIZE) - us), pend_bytes);
+    len = min((align_up(us + 1, PGSIZE) - us), pend_bytes);
     paddr = va_to_pa(mytask()->pagetable, us, &pte);
     if (paddr == 0 || ((*pte) & (PTE_R | PTE_U)) != (PTE_R | PTE_U))
       kill();

@@ -48,21 +48,24 @@ fclose(struct file* f)
   if (f->refc == 0)
     panic("fclose: ref=0");
   --f->refc;
-  if (f->refc == 0)
+  if (f->refc == 0 && f->inode)
     iput(f->inode);
   spin_put(&f->lock);
 }
 
 // f->off不是线程安全的
 u32
-fseek(struct file* f, int off)
+fseek(struct file* f, int off, int whence)
 {
   u32 r = f->off;
   if (f->type == INODE) {
-    if (off > 0)
-      f->off = min(f->off + off, f->inode->di.fsize);
-    else
-      f->off -= min(f->off, -off);
+    if (whence == SEEK_CUR) {
+      if (off > 0)
+        f->off = min(f->off + off, f->inode->di.fsize);
+      else
+        f->off -= min(f->off, -off);
+    } else if (whence == SEEK_SET)
+      f->off = min(f->inode->di.fsize, max(0, off));
   }
   return r;
 }

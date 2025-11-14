@@ -43,15 +43,15 @@ load_segment(struct task* t, struct file* f, struct elfhdr* eh)
   int seg_cnt = eh->phnum;
 
   struct proghdr pg;
-  fseek(f, eh->phoff);
+  fseek(f, eh->phoff, SEEK_SET);
   while (seg_cnt--) {
     fread(f, &pg, sizeof(pg), true);
     if (pg.type == ELF_PROG_LOAD && (pg.filesz > 0 || pg.memsz > 0)) {
       struct page* p = alloc_page();
       list_pushback(&t->pages, &p->page_node);
-      int roff = fseek(f, pg.off);
+      int roff = fseek(f, pg.off, SEEK_SET);
       fread(f, (void*)p->paddr, pg.filesz, true);
-      fseek(f, roff);
+      fseek(f, roff, SEEK_SET);
 
       u16 attr = PTE_U;
       if (pg.flags & ELF_PROG_FLAG_READ)

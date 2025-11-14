@@ -5,7 +5,7 @@
 #define NULL nullptr
 int fork(void);
 int exit(int status);
-int exec(const char* path, char* arg[]);
+int exec(const char* path, char arg[]);
 int wait(int* status);
 int read(int fd, void* buf, int count);
 int write(int fd, const void* buf, int count);
@@ -21,3 +21,6 @@ int mknod(const char* path, unsigned int dev); // 只能创建字符设备文件
 int chdir(const char* path);
 void* mmap(void* addr, unsigned int length, int prot);
 int munmap(void* addr, unsigned int length);
+
+#define STDIN  0
+#define STDOUT 1
