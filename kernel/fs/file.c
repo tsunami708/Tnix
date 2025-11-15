@@ -3,6 +3,7 @@
 #include "fs/inode.h"
 #include "fs/dir.h"
 #include "fs/bio.h"
+#include "fs/pipe.h"
 #include "util/spinlock.h"
 #include "util/printf.h"
 #include "util/string.h"
@@ -48,8 +49,12 @@ fclose(struct file* f)
   if (f->refc == 0)
     panic("fclose: ref=0");
   --f->refc;
-  if (f->refc == 0 && f->inode)
-    iput(f->inode);
+  if (f->refc == 0) {
+    if ((f->type == INODE || f->type == DEVICE) && f->inode)
+      iput(f->inode);
+    else if (f->type == PIPE && f->pipe)
+      pipeclose(f->pipe);
+  }
   spin_put(&f->lock);
 }
 

@@ -26,7 +26,7 @@ struct buf* data_block_get(struct inode* in, u32 i);
 struct buf* data_block_alloc(struct inode* in);
 void idx_remove(struct inode* in, u32 i);
 
-static inline int
+static inline __attribute__((always_inline)) int
 iblock_cnt(struct inode* in)
 {
   return in->di.fsize / BSIZE - (in->di.fsize % BSIZE == 0 ? 0 : 1);

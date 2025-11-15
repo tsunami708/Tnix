@@ -18,6 +18,7 @@
 #define SYS_CHDIR  15
 #define SYS_MMAP   16
 #define SYS_MUNMAP 17
+#define SYS_PIPE   18
 
 #ifndef AS
 struct pt_regs;
@@ -43,5 +44,6 @@ u64 sys_mknod(struct pt_regs* pt);
 u64 sys_chdir(struct pt_regs* pt);
 u64 sys_mmap(struct pt_regs* pt);
 u64 sys_munmap(struct pt_regs* pt);
+u64 sys_pipe(struct pt_regs* pt);
 
 #endif

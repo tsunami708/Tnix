@@ -21,6 +21,7 @@ int mknod(const char* path, unsigned int dev); // 只能创建字符设备文件
 int chdir(const char* path);
 void* mmap(void* addr, unsigned int length, int prot);
 int munmap(void* addr, unsigned int length);
+int pipe(int fd[2]);
 
 #define STDIN  0
 #define STDOUT 1

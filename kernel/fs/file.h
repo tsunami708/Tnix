@@ -12,8 +12,7 @@ enum mode {
 #include "types.h"
 #include "util/spinlock.h"
 struct inode;
-struct pipe {};
-
+struct pipe;
 struct file {
   enum mode mode;
   enum type { NONE, PIPE, INODE, DEVICE } type;

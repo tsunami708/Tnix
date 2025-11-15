@@ -5,6 +5,7 @@
 #include "fs/dir.h"
 #include "fs/fs.h"
 #include "fs/bio.h"
+#include "fs/pipe.h"
 #include "task/task.h"
 #include "trap/pt_reg.h"
 #include "util/string.h"
@@ -67,6 +68,16 @@ create(const char* path, enum ftype type, dev_t dev)
   iput(parent);
   return 0;
 }
+static void
+move_fdi(struct task* t)
+{
+  for (u32 i = t->files.i; i < NFILE; ++i) {
+    if (t->files.f[i] == NULL) {
+      t->files.i = i;
+      break;
+    }
+  }
+}
 
 u64
 sys_read(struct pt_regs* pt)
@@ -88,7 +99,7 @@ sys_read(struct pt_regs* pt)
   case INODE:
     return fread(f, udst, len, false);
   case PIPE:
-    return 0; // todo
+    return pipewrite(f->pipe, udst, len);
   }
   return 0;
 }
@@ -113,7 +124,7 @@ sys_write(struct pt_regs* pt)
   case INODE:
     return fwrite(f, usrc, len, false);
   case PIPE:
-    return 0; // todo
+    return pipewrite(f->pipe, usrc, len);
   }
   return 0;
 }
@@ -123,7 +134,7 @@ sys_lseek(struct pt_regs* pt)
 {
   int fd = pt->a0, off = pt->a1;
   struct file* f = mytask()->files.f[fd];
-  if (f == NULL)
+  if (f == NULL || f->type != INODE)
     return -EINVAL;
   return fseek(f, off, SEEK_CUR);
 }
@@ -178,11 +189,7 @@ sys_open(struct pt_regs* pt)
   f->off = in->di.fsize;
   u64 r = t->files.i;
   t->files.f[r] = f;
-  for (int j = r; j < NFILE; ++j)
-    if (t->files.f[j] == NULL) {
-      t->files.i = j;
-      break;
-    }
+  move_fdi(t);
   return r;
 }
 
@@ -196,11 +203,7 @@ sys_dup(struct pt_regs* pt)
   u64 r = t->files.i;
   fdup(t->files.f[fd]);
   t->files.f[r] = t->files.f[fd];
-  for (int j = r; j < NFILE; ++j)
-    if (t->files.f[j] == NULL) {
-      t->files.i = j;
-      break;
-    }
+  move_fdi(t);
   return r;
 }
 
@@ -339,5 +342,28 @@ sys_chdir(struct pt_regs* pt)
   struct inode* in = dentry_find(path);
   iput(mytask()->cwd);
   mytask()->cwd = in;
+  return 0;
+}
+
+u64
+sys_pipe(struct pt_regs* pt)
+{
+  if (pt->a0 == 0)
+    return -EINVAL;
+  int* fds = (int*)pt->a0;
+  struct task* t = mytask();
+  struct pipe* p = pipealloc();
+  struct file *rf = falloc(), *wf = falloc();
+  rf->pipe = wf->pipe = p;
+  rf->type = wf->type = PIPE;
+  rf->mode = O_RDONLY;
+  wf->mode = O_WRONLY;
+
+  t->files.f[t->files.i] = rf;
+  copy_to_user(fds, &t->files.i, sizeof(int));
+  move_fdi(t);
+  t->files.f[t->files.i] = wf;
+  copy_to_user(fds + 1, &t->files.i, sizeof(int));
+  move_fdi(t);
   return 0;
 }

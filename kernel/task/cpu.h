@@ -28,25 +28,25 @@ struct cpu {
 };
 
 
-static inline struct cpu*
+static inline __attribute__((always_inline)) struct cpu*
 mycpu(void)
 {
   return (struct cpu*)r_tp();
 }
 
-static inline struct task*
+static inline __attribute__((always_inline)) struct task*
 mytask(void)
 {
   return mycpu()->cur_task;
 }
 
-static inline u64
+static inline __attribute__((always_inline)) u64
 cpuid(void)
 {
   return mycpu()->id;
 }
 
-static inline void
+static inline __attribute__((always_inline)) void
 push_intr(void)
 {
   struct cpu* c = mycpu();
@@ -56,7 +56,7 @@ push_intr(void)
   ++c->spinlevel;
 }
 
-static inline void
+static inline __attribute__((always_inline)) void
 pop_intr(void)
 {
   struct cpu* c = mycpu();

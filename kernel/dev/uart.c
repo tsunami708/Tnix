@@ -18,13 +18,13 @@
 #define reg(r) (volatile char*)(UART0 + r)
 
 
-static inline char
+static inline __attribute__((always_inline)) char
 r_reg(int r)
 {
   return *reg(r);
 }
 
-static inline void
+static inline __attribute__((always_inline)) void
 w_reg(int r, char v)
 {
   *reg(r) = v;
@@ -70,6 +70,7 @@ uart_put_syn(char c)
 struct spinlock;
 static struct sleeplock tx = { .lname = "tx" };
 extern void sleep(void* chan, struct spinlock* lock);
+extern void wakeup(void* chan);
 extern void copy_from_user(void* kdst, const void* usrc, u32 bytes);
 void
 uart_write(const char* ustr, u32 len)
@@ -92,6 +93,9 @@ uart_write(const char* ustr, u32 len)
 void
 do_uart_irq(void)
 {
+  if (r_reg(LSR) & LSR_W)
+    wakeup((void*)UART0);
+
   extern void do_console_irq(char);
   char ch = uart_get();
   if (ch != (char)-1)

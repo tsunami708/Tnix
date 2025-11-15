@@ -15,22 +15,22 @@ static struct {
 } icache;
 
 
-static inline u32
+static inline __attribute__((always_inline)) u32
 blockno_of_inode(struct inode* inode)
 {
   return inode->sb->inodes + inode->inum / DINODE_CNT_PER_BLOCK;
 }
-static inline u32
+static inline __attribute__((always_inline)) u32
 offset_of_inode(struct inode* inode) // dinode在其磁盘块上的偏移
 {
   return inode->inum % DINODE_CNT_PER_BLOCK;
 }
-static inline u32
+static inline __attribute__((always_inline)) u32
 imap_blockno_of_inode(struct inode* inode)
 {
   return inode->sb->imap + inode->inum / BIT_CNT_PER_BLOCK;
 }
-static inline u32
+static inline __attribute__((always_inline)) u32
 imap_offset_of_inode(struct inode* inode) // dinode对于imap位在其磁盘块上的偏移
 {
   return inode->inum % BIT_CNT_PER_BLOCK;

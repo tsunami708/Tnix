@@ -55,6 +55,7 @@ OBJS = \
 	$K/fs/dir.o \
 	$K/fs/file.o \
 	$K/fs/elf.o \
+	$K/fs/pipe.o \
 	$K/util/spinlock.o \
 	$K/util/sleeplock.o \
 	$K/util/printf.o \

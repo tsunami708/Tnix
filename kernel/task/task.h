@@ -50,7 +50,7 @@ struct task {
 
   struct {
     struct file* f[NFILE];
-    u8 i;
+    u32 i;
   } files;
 
   enum task_state state;

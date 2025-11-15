@@ -25,7 +25,7 @@ struct list_node {
 /*静态定义一个链表头*/
 #define INIT_LIST(name) struct list_node name = { .next = &name, .prev = &name }
 
-static inline void
+static inline __attribute__((always_inline)) void
 list_init(struct list_node* head)
 {
   head->next = head->prev = head;

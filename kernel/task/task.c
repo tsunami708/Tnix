@@ -27,6 +27,15 @@ static void
 copy_files(struct task* c, struct task* p)
 {
   memcpy(&c->files, &p->files, sizeof(p->files));
+  for (u32 i = 0; i < NFILE; ++i) {
+    struct file* pf = c->files.f[i];
+    if (pf) {
+      struct file* f = falloc();
+      f->type = pf->type;
+      f->mode = pf->mode;
+      f->inode = pf->inode; // union !
+    }
+  }
 }
 
 static void

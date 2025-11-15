@@ -108,3 +108,9 @@ munmap:
   li a7, SYS_MUNMAP
   ecall
   ret
+
+.global pipe
+pipe:
+  li a7, SYS_PIPE
+  ecall
+  ret

@@ -11,7 +11,7 @@ struct pt_regs {
   u64 a0, a1, a2, a3, a4, a5, a6, a7;
 };
 
-static inline struct pt_regs*
+static inline __attribute__((always_inline)) struct pt_regs*
 mypt(void)
 {
   return (void*)mytask()->kstack - sizeof(struct pt_regs);

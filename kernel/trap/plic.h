@@ -56,34 +56,34 @@
 #define IRQ_DISK  1
 #define IRQ_UART0 10
 
-static inline void
+static inline __attribute__((always_inline)) void
 set_plic_priority(u32 irq, u32 pri)
 {
   *PLIC_PRIORITY(irq) = pri;
 }
 
-static inline void
+static inline __attribute__((always_inline)) void
 set_plic_my_threshold(u32 thr)
 {
   *(PLIC_THRESHOLD(cpuid())) = thr;
 }
 
 // cpu核向PLIC询问IRQ
-static inline u32
+static inline __attribute__((always_inline)) u32
 plic_claim(void)
 {
   return *PLIC_CLAIM(cpuid());
 }
 
 // cpu核告知PLIC IRQ已处理
-static inline void
+static inline __attribute__((always_inline)) void
 plic_complete(u32 irq)
 {
   *PLIC_CLAIM(cpuid()) = irq;
 }
 
 
-static inline void
+static inline __attribute__((always_inline)) void
 set_plic_my_enable(u32 irq, bool enable)
 {
   u32 index = irq / 32;
