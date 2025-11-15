@@ -23,16 +23,18 @@ static_assert(MAX_FILE_NUMBER % BSIZE == 0);
 constexpr u32 DATA_BLOCK_NUMBER = 1024 * 1024; // 支持2^20*BSIZE的文件内容数据区 (BSIZE=1024 ~ 1GB文件内容区)
 static_assert(DATA_BLOCK_NUMBER % BSIZE == 0);
 //*
-
+#define DINODE_CNT_PER_BLOCK (BSIZE / sizeof(struct dinode))
 constexpr u32 SB_START_BLOCKNO = 1;
 constexpr u32 IMAP_START_BLOCKNO = 2;
 constexpr u32 IMAP_SIZE = MAX_FILE_NUMBER / 8;
 constexpr u32 IMAP_BLOCKNUM = IMAP_SIZE / BSIZE;
 
-constexpr u32 DINODES_START_BLOCKNO = IMAP_START_BLOCKNO + IMAP_BLOCKNUM;
 struct __attribute__((aligned(BSIZE))) {
-  struct dinode dinodes[MAX_FILE_NUMBER];
+  struct __attribute__((aligned(BSIZE))) {
+    struct dinode _dinodes[DINODE_CNT_PER_BLOCK];
+  } dinodes[MAX_FILE_NUMBER / DINODE_CNT_PER_BLOCK + 1];
 } DINODES{};
+constexpr u32 DINODES_START_BLOCKNO = IMAP_START_BLOCKNO + IMAP_BLOCKNUM;
 constexpr u32 DINODES_SIZE = sizeof(DINODES);
 constexpr u32 DINODES_BLOCKNUM = DINODES_SIZE / BSIZE;
 
@@ -52,7 +54,23 @@ int disk_fd = -1;
 u8 imap[IMAP_SIZE]{};
 u8 bmap[BMAP_SIZE]{};
 
-
+static inline struct dinode*
+inum_to_dinode(u32 inum)
+{
+  u32 block_index = inum / DINODE_CNT_PER_BLOCK;
+  u32 offset_in_block = inum % DINODE_CNT_PER_BLOCK;
+  return &DINODES.dinodes[block_index]._dinodes[offset_in_block];
+}
+static inline int
+dinode_to_inum(struct dinode* dinode_ptr)
+{
+  u64 base_addr = (u64)&DINODES;
+  u64 target_addr = (u64)dinode_ptr;
+  u64 offset = target_addr - base_addr;
+  int block_index = offset / BSIZE;
+  int offset_in_block = (offset % BSIZE) / sizeof(struct dinode);
+  return block_index * DINODE_CNT_PER_BLOCK + offset_in_block;
+}
 struct dinode* dinode_alloc(void);
 u32 block_alloc(void);
 
@@ -135,7 +153,7 @@ dinode_alloc(void)
     exit(1);
   }
 
-  struct dinode* r = DINODES.dinodes + free_inum;
+  struct dinode* r = DINODES.dinodes[free_inum / DINODE_CNT_PER_BLOCK]._dinodes + free_inum % DINODE_CNT_PER_BLOCK;
 
   u32 byte_off = free_inum / 8;
   u8 bit_off = free_inum % 8;
@@ -203,7 +221,7 @@ reg_meta_copy(struct dirent* d)
   }
 
   close(fd);
-  return di - DINODES.dinodes;
+  return dinode_to_inum(di);
 }
 void
 reg_data_copy(struct dirent* d, u32 inum)
@@ -212,7 +230,7 @@ reg_data_copy(struct dirent* d, u32 inum)
     printf("%s only support regular file\n", __func__);
     exit(1);
   }
-  struct dinode* di = DINODES.dinodes + inum;
+  struct dinode* di = inum_to_dinode(inum);
   char buf[BSIZE] = { 0 };
   int fd = open(d->d_name, O_RDONLY);
 
@@ -245,7 +263,7 @@ directory_copy(const char* path, u32 pinum, bool root)
   queue<pair<string, u32> > namei;
 
   struct dinode* di = dinode_alloc();
-  u32 inum = di - DINODES.dinodes;
+  u32 inum = dinode_to_inum(di);
   di->type = DIRECTORY;
   di->nlink = 2; // 目录文件不允许创建硬链接,.和..是例外
 
