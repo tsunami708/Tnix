@@ -18,6 +18,13 @@ void ifree(struct inode* in);
 
 struct inode* iget(struct superblock* sb, u32 inum);
 void iput(struct inode* inode);
+static inline __attribute__((always_inline)) void
+iref(struct inode* in)
+{
+  spin_get(&in->spin);
+  ++in->refc;
+  spin_put(&in->spin);
+}
 
 void iupdate(struct inode* inode);
 bool iexist(struct superblock* sb, u32 inum);

@@ -6,7 +6,7 @@ extern void init_memory(void);
 extern void init_page(void);
 extern void init_trap(void);
 extern void init_plic(void);
-extern void init_systemd(void);
+extern void init_proc1(void);
 extern void init_console(void);
 extern void init_bcache(void);
 extern void init_icache(void);
@@ -26,7 +26,7 @@ main(void)
     init_bcache();  // IO缓冲区初始化
     init_icache();  // inode表初始化
     init_disk();    // 硬盘初始化
-    init_systemd(); // 启动1号用户任务
+    init_proc1();   // 启动1号用户任务
     __sync_synchronize();
     cpu_ok = true;
   } else {

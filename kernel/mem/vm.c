@@ -66,7 +66,7 @@ do_vmmap(pagetable_t ptb, u64 va, u64 pa, u64 size, u16 attr, i8 gra, struct tas
       }
       if (! (*pte & PTE_V)) { // 需要创建非叶子 PTE（指向下一级页表）
         struct page* p = alloc_page();
-        u64 new_pt_pa = pha(p);
+        u64 new_pt_pa = p->paddr;
         if (ut) // 非内核页表映射
           list_pushback(&ut->pages, &p->page_node);
         *pte = ((new_pt_pa >> 12) << 10) | PTE_V;
@@ -136,18 +136,12 @@ copy_pagetable(struct task* c, struct task* p)
 {
   struct vma* pvm = &p->vmas.vmas[0];
   while (pvm->pa > 0) {
-    if ((pvm->attr & PTE_W) == 0)
-      task_vmmap(c, pvm->va, pvm->pa, pvm->len, pvm->attr, pvm->type);
-    else {
-      struct page* page = alloc_page();
-      list_pushback(&c->pages, &page->page_node);
-      memcpy((void*)page->paddr, (void*)pvm->pa, PGSIZE);
-      task_vmmap(c, pvm->va, pha(page), pvm->len, pvm->attr, pvm->type);
-    }
+    struct page* p = alloc_page_for_task(c);
+    memcpy((void*)p->paddr, (void*)pvm->pa, PGSIZE);
+    task_vmmap(c, pvm->va, p->paddr, pvm->len, pvm->attr, pvm->type);
     ++pvm;
   }
 }
-
 
 
 static void // 遍历页表
@@ -274,7 +268,7 @@ void
 init_page(void)
 {
   if (cpuid() == 0) {
-    kernel_pgt = (pagetable_t)pha(alloc_page());
+    kernel_pgt = (pagetable_t)(alloc_page()->paddr);
     svmmap(kernel_pgt, POWER, POWER, POWER_SIZE, PTE_R | PTE_W, NULL);
     svmmap(kernel_pgt, CLINT, CLINT, CLINT_SIZE, PTE_R | PTE_W, NULL);
     svmmap(kernel_pgt, PLIC, PLIC, PLIC_SIZE, PTE_R | PTE_W, NULL);

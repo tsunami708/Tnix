@@ -73,7 +73,7 @@ U=user
 PROGS = \
 	$U/bin/init \
 	$U/bin/sh \
-	$U/bin/pwd \
+	$U/bin/shutdown \
 
 $K/kernel: $(OBJS) $K/kernel.ld
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS) 

@@ -48,7 +48,7 @@ sys_exit(struct pt_regs* pt)
   t->state = EXIT;
   wakeup(&t->parent->childs);
 
-  print("process %d done\n", t->pid);
+  // print("process %d done\n", t->pid);
 
   spin_get(&t->lock);
   context_switch(&t->ctx, &mycpu()->ctx);

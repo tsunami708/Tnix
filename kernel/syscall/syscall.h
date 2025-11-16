@@ -1,24 +1,25 @@
 #pragma once
 
-#define SYS_FORK   0
-#define SYS_EXIT   1
-#define SYS_EXEC   2
-#define SYS_WAIT   3
-#define SYS_READ   4
-#define SYS_WRITE  5
-#define SYS_LSEEK  6
-#define SYS_OPEN   7
-#define SYS_DUP    8
-#define SYS_CLOSE  9
-#define SYS_LINK   10
-#define SYS_UNLINK 11
-#define SYS_MKDIR  12
-#define SYS_RMDIR  13
-#define SYS_MKNOD  14
-#define SYS_CHDIR  15
-#define SYS_MMAP   16
-#define SYS_MUNMAP 17
-#define SYS_PIPE   18
+#define SYS_FORK     0
+#define SYS_EXIT     1
+#define SYS_EXEC     2
+#define SYS_WAIT     3
+#define SYS_READ     4
+#define SYS_WRITE    5
+#define SYS_LSEEK    6
+#define SYS_OPEN     7
+#define SYS_DUP      8
+#define SYS_CLOSE    9
+#define SYS_LINK     10
+#define SYS_UNLINK   11
+#define SYS_MKDIR    12
+#define SYS_RMDIR    13
+#define SYS_MKNOD    14
+#define SYS_CHDIR    15
+#define SYS_MMAP     16
+#define SYS_MUNMAP   17
+#define SYS_PIPE     18
+#define SYS_SHUTDOWN 19
 
 #ifndef AS
 struct pt_regs;
@@ -45,5 +46,6 @@ u64 sys_chdir(struct pt_regs* pt);
 u64 sys_mmap(struct pt_regs* pt);
 u64 sys_munmap(struct pt_regs* pt);
 u64 sys_pipe(struct pt_regs* pt);
+u64 sys_shutdown(struct pt_regs* pt);
 
 #endif

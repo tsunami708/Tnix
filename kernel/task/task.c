@@ -72,9 +72,8 @@ task_init(struct task* t, struct task* parent)
   list_init(&t->childs);
 
   //* 分配页表
-  p = alloc_page();
-  list_pushback(&t->pages, &p->page_node);
-  t->pagetable = (pagetable_t)pha(p);
+  p = alloc_page_for_task(t);
+  t->pagetable = (pagetable_t)p->paddr;
   t->ustack = USTACK + PGSIZE;
 
   if (parent) {
@@ -85,21 +84,18 @@ task_init(struct task* t, struct task* parent)
     copy_files(t, parent);
   } else {
     //* 分配用户栈
-    p = alloc_page();
-    list_pushback(&t->pages, &p->page_node);
-    task_vmmap(t, USTACK, pha(p), PGSIZE, PTE_R | PTE_W | PTE_U, STACK);
+    p = alloc_page_for_task(t);
+    task_vmmap(t, USTACK, p->paddr, PGSIZE, PTE_R | PTE_W | PTE_U, STACK);
   }
 
   //* 分配内核栈
-  p = alloc_page();
-  list_pushback(&t->pages, &p->page_node);
-  t->kstack = pha(p) + PGSIZE;
+  p = alloc_page_for_task(t);
+  t->kstack = p->paddr + PGSIZE;
 
   //* 分配trapframe页
-  p = alloc_page();
-  ((struct trapframe*)pha(p))->ksatp = kernel_satp;
-  list_pushback(&t->pages, &p->page_node);
-  svmmap(t->pagetable, TRAPFRAME, pha(p), PGSIZE, PTE_R, t);
+  p = alloc_page_for_task(t);
+  ((struct trapframe*)p->paddr)->ksatp = kernel_satp;
+  svmmap(t->pagetable, TRAPFRAME, p->paddr, PGSIZE, PTE_R, t);
 
   //! 映射trampoline页 |  TRAMPOLINE页必须在内核和用户的页表中虚拟地址必须相同 | 该页所有task共享
   svmmap(t->pagetable, TRAMPOLINE, (u64)trampoline, PGSIZE, PTE_X | PTE_R, NULL);
@@ -131,13 +127,12 @@ clean_source(struct task* t)
   for (int i = 0; i < t->files.i; ++i)
     fclose(t->files.f[i]);
   t->files.i = 0;
-
   t->vmas.nvma = 0;
 
   struct list_node *cur = t->pages.next, *tmp;
   while (cur != &t->pages) {
     tmp = cur->next;
-    unpin_page(container_of(cur, struct page, page_node));
+    free_page_for_task(container_of(cur, struct page, page_node));
     cur = tmp;
   }
 
@@ -152,7 +147,7 @@ reset_vma(struct task* t)
   while (i < t->vmas.nvma) {
     if (t->vmas.vmas[i].type == DATA || t->vmas.vmas[i].type == TEXT) {
       vmunmap(t->pagetable, t->vmas.vmas[i].va, t->vmas.vmas[i].len);
-      unpin_page(page(t->vmas.vmas[i].pa));
+      free_page_for_task(page(t->vmas.vmas[i].pa));
       for (int j = i; j < t->vmas.nvma - 1; j++)
         t->vmas.vmas[j] = t->vmas.vmas[j + 1];
       t->vmas.nvma--;

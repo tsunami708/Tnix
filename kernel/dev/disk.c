@@ -207,9 +207,9 @@ virtio_disk_init(void)
   // allocate and zero queue memory.
 
   //! modified
-  disk.desc = (struct virtq_desc*)pha(alloc_page());
-  disk.avail = (struct virtq_avail*)pha(alloc_page());
-  disk.used = (struct virtq_used*)pha(alloc_page());
+  disk.desc = (struct virtq_desc*)(alloc_page()->paddr);
+  disk.avail = (struct virtq_avail*)(alloc_page()->paddr);
+  disk.used = (struct virtq_used*)(alloc_page()->paddr);
   //
 
 

@@ -58,7 +58,7 @@ struct task {
   struct context ctx;
   struct inode* cwd;
 
-  struct list_node pages;
+  struct list_node pages; // 进程私有物理页面链表
 
   struct list_node childs;
   struct list_node self;

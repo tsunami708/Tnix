@@ -114,3 +114,9 @@ pipe:
   li a7, SYS_PIPE
   ecall
   ret
+
+.global shutdown
+shutdown:
+  li a7, SYS_SHUTDOWN
+  ecall
+  ret

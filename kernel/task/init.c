@@ -2,7 +2,7 @@
 #include "mem/vm.h"
 
 void
-init_systemd(void)
+init_proc1(void)
 {
   extern void first_sched(void);
 
