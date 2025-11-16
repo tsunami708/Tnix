@@ -100,7 +100,7 @@ do_console_irq(char ch)
     break;
   case '\r':
   case '\n':
-    uart_put_syn('\n');
+    console_putc('\n');
     wakeup(&con.r);
     break;
   case 32 ... 126: // 可显示字符
@@ -108,6 +108,8 @@ do_console_irq(char ch)
     break;
   case CTRL('N'): // 清屏
     clean_console();
+    uart_put_syn('$');
+    uart_put_syn('>');
     break;
   case CTRL('P'):
     break; // todo: list all process
@@ -124,7 +126,7 @@ console_read(void* udst, u32 len)
     sleep(&con.r, &con.lock);
   len = min(len, console_readable_len());
   if (con.r < con.w)
-    copy_to_user(udst, con.buf, len);
+    copy_to_user(udst, con.buf + con.r, len);
   else {
     u32 lslice1 = CONSOLE_BUFFER_SIZE - con.r, lslice2 = len - lslice1;
     copy_to_user(udst, con.buf + con.r, lslice1);

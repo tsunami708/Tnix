@@ -5,20 +5,36 @@
 #include "util/spinlock.h"
 #include "util/printf.h"
 #include "fs/inode.h"
+#include "fs/pipe.h"
 
 
 INIT_SPINLOCK(tq);
 struct task task_queue[NPROC];
 
 INIT_SPINLOCK(ti);
-static u16 tid = 1;
-
+static u32 tidmap[1 + NPROC / sizeof(u32) / 8] = { 0 };
+static void
+free_tid(u16 tid)
+{
+  spin_get(&ti);
+  tidmap[(tid - 1) / sizeof(u32)] &= ~(1U << (tid - 1) % sizeof(u32));
+  spin_put(&ti);
+}
 static u16
-alloc_tid()
+alloc_tid(void)
 {
   u16 r;
   spin_get(&ti);
-  r = tid++;
+  int i = 0;
+  for (; i < sizeof(tidmap) / sizeof(u32); ++i)
+    if (tidmap[i] != 0xFFFFFFFFU)
+      break;
+  for (int j = 0; j < 32; ++j)
+    if ((tidmap[i] & (1U << j)) == 0) {
+      r = i * sizeof(u32) + j + 1;
+      tidmap[i] |= (1U << j);
+      break;
+    }
   spin_put(&ti);
   return r;
 }
@@ -34,6 +50,10 @@ copy_files(struct task* c, struct task* p)
       f->type = pf->type;
       f->mode = pf->mode;
       f->inode = pf->inode; // union !
+      if (f->type == INODE || f->type == DEVICE)
+        iref(f->inode);
+      else if (f->type == PIPE)
+        pipeget(f->pipe);
     }
   }
 }
@@ -117,9 +137,11 @@ clean_source(struct task* t)
   struct list_node *cur = t->pages.next, *tmp;
   while (cur != &t->pages) {
     tmp = cur->next;
-    free_page(container_of(cur, struct page, page_node));
+    unpin_page(container_of(cur, struct page, page_node));
     cur = tmp;
   }
+
+  free_tid(t->tid);
 }
 
 // 清空代码段和数据段
@@ -130,7 +152,7 @@ reset_vma(struct task* t)
   while (i < t->vmas.nvma) {
     if (t->vmas.vmas[i].type == DATA || t->vmas.vmas[i].type == TEXT) {
       vmunmap(t->pagetable, t->vmas.vmas[i].va, t->vmas.vmas[i].len);
-      list_remove(&page(t->vmas.vmas[i].pa)->page_node);
+      unpin_page(page(t->vmas.vmas[i].pa));
       for (int j = i; j < t->vmas.nvma - 1; j++)
         t->vmas.vmas[j] = t->vmas.vmas[j + 1];
       t->vmas.nvma--;
