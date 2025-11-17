@@ -20,6 +20,7 @@
 #define SYS_MUNMAP   17
 #define SYS_PIPE     18
 #define SYS_SHUTDOWN 19
+#define SYS_LS       20
 
 #ifndef AS
 struct pt_regs;
@@ -47,5 +48,6 @@ u64 sys_mmap(struct pt_regs* pt);
 u64 sys_munmap(struct pt_regs* pt);
 u64 sys_pipe(struct pt_regs* pt);
 u64 sys_shutdown(struct pt_regs* pt);
+u64 sys_ls(struct pt_regs* pt);
 
 #endif

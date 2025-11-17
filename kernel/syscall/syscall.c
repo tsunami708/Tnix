@@ -10,6 +10,7 @@ static syscall_t syscalls[] = {
   [SYS_DUP] sys_dup,     [SYS_CLOSE] sys_close,   [SYS_LINK] sys_link,   [SYS_UNLINK] sys_unlink,
   [SYS_MKDIR] sys_mkdir, [SYS_RMDIR] sys_rmdir,   [SYS_MKNOD] sys_mknod, [SYS_CHDIR] sys_chdir,
   [SYS_MMAP] sys_mmap,   [SYS_MUNMAP] sys_munmap, [SYS_PIPE] sys_pipe,   [SYS_SHUTDOWN] sys_shutdown,
+  [SYS_LS] sys_ls,
 };
 
 // static const char* sysfunc[] = {
@@ -46,7 +47,7 @@ argstr(u64 uaddr, char* path)
 }
 
 u64
-sys_shutdown(struct pt_regs* pt)
+sys_shutdown(struct pt_regs*)
 {
   [[noreturn]] extern void poweroff(void);
   poweroff();

@@ -59,20 +59,20 @@ u64
 sys_exec(struct pt_regs* pt)
 {
   if (pt->a0) {
-    char path[MAX_PATH_LENGTH] = { 0 };
-    if (argstr(pt->a0, path) == false)
-      return -EPATH;
-
+    char path[MAX_PATH_LENGTH / 2] = { 0 };
+    argstr(pt->a0, path);
     struct elfhdr eh;
     struct file* f = read_elfhdr(path, &eh);
-    // char arg[MAX_PATH_LENGTH / 2] = { 0 };
-    // if (pt->a1)
-    //   argstr(pt->a1, arg);
-
     if (f == NULL)
       return -EPATH;
-
     struct task* t = mytask();
+    if (pt->a1) {
+      char option[MAX_PATH_LENGTH / 2] = { 0 };
+      argstr(pt->a1, option);
+      int opsize = strlen(option) + 1;
+      t->ustack -= align_up(opsize, 16);
+      memcpy((void*)va_to_pa(t->pagetable, t->ustack, NULL), option, opsize);
+    }
     reset_vma(t);
     load_segment(t, f, &eh);
     t->entry = eh.entry;

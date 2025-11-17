@@ -9,6 +9,7 @@
 #include "task/task.h"
 #include "trap/pt_reg.h"
 #include "util/string.h"
+#include "util/printf.h"
 #include "syscall/syscall.h"
 
 struct dev_op devsw[NDEV];
@@ -340,6 +341,8 @@ sys_chdir(struct pt_regs* pt)
   if (argstr(pt->a0, path) == false)
     return -EPATH;
   struct inode* in = dentry_find(path);
+  if (in == NULL)
+    return -EPATH;
   iput(mytask()->cwd);
   mytask()->cwd = in;
   return 0;
@@ -365,5 +368,28 @@ sys_pipe(struct pt_regs* pt)
   t->files.f[t->files.i] = wf;
   copy_to_user(fds + 1, &t->files.i, sizeof(int));
   move_fdi(t);
+  return 0;
+}
+
+u64
+sys_ls(struct pt_regs*)
+{
+  char name[DLENGTH + 1] = { 0 };
+  struct inode* cur = mytask()->cwd;
+  int blockcnt = iblock_cnt(cur);
+  for (int i = 0; i < blockcnt; ++i) {
+    struct buf* b = data_block_get(cur, i);
+    struct dentry* dt = (struct dentry*)b->data + 1;
+    u64 cnt = *(u64*)b->data, k = 0;
+    while (k != cnt) {
+      if (*dt->name) {
+        memcpy(name, dt->name, DLENGTH);
+        print("%s\n", name);
+        ++k;
+      }
+      ++dt;
+    }
+    brelse(b);
+  }
   return 0;
 }

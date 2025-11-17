@@ -18,7 +18,7 @@ first_sched(void)
 {
   struct task* t = mytask();
   spin_put(&t->lock);
-  u64 addr = (u64)run_new_task - (u64)trampoline + TRAMPOLINE; // run_new_task的高虚拟地址
+  u64 _start = (u64)run_new_task - (u64)trampoline + TRAMPOLINE; // run_new_task的高虚拟地址
 
   static bool first = true; // 第一次调度init
   if (first) {
@@ -42,19 +42,19 @@ first_sched(void)
   w_stvec((u64)utrap_entry - (u64)trampoline + TRAMPOLINE);
   w_sstatus((r_sstatus() & ~SSTATUS_SPP) | SSTATUS_SPIE);
   w_sepc(t->entry);
-  ((void (*)(u64, u64))addr)(mycpu()->cur_satp, t->ustack);
+  ((void (*)(u64, u64))_start)(mycpu()->cur_satp, t->ustack);
 }
 
 void
 yield(void)
 {
-  print("CPU %u yield task-%d\n", cpuid(), mytask()->tid);
+  // print("CPU %u yield task-%d\n", cpuid(), mytask()->tid);
   struct task* t = mytask();
   spin_get(&t->lock); //``
   t->state = READY;
   context_switch(&t->ctx, &mycpu()->ctx);
   spin_put(&t->lock); //*
-  print("CPU %u sched task-%d\n", cpuid(), mytask()->tid);
+  // print("CPU %u sched task-%d\n", cpuid(), mytask()->tid);
 }
 
 void

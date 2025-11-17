@@ -74,6 +74,12 @@ PROGS = \
 	$U/bin/init \
 	$U/bin/sh \
 	$U/bin/shutdown \
+	$U/bin/cat \
+	$U/bin/echo \
+	$U/bin/mkdir \
+	$U/bin/rmdir \
+	$U/bin/rm \
+	$U/bin/touch \
 
 $K/kernel: $(OBJS) $K/kernel.ld
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS) 
@@ -81,13 +87,15 @@ $K/kernel: $(OBJS) $K/kernel.ld
 	$(OBJDUMP) -t $K/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $K/kernel.sym
 
 $K/%.o: $K/%.S
-	$(CC) $(KCFLAGS) -g -c -o $@ $<
+	$(CC) $(KCFLAGS) -c -o $@ $<
 
 $U/src/usys.o: $U/src/usys.S
 	$(CC) $(UCFLAGS) -c -o $@ $< 
 $U/bin/%: $U/src/%.c $U/src/usys.o
 	$(CC) $(UCFLAGS) $(LDFLAGS) -T user/user.ld -o $@ $^
-
+ifdef UASM
+	$(OBJDUMP) -S $@ > $(U)/asm/$*.asm
+endif
 
 -include \
 	$K/util/*.d \

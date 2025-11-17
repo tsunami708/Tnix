@@ -112,9 +112,9 @@ do_console_irq(char ch)
     uart_put_syn('>');
     break;
   case CTRL('P'):
-    break; // todo: list all process
-  case CTRL('C'):
-    break; // todo: kill current process
+    extern void dump_all_task();
+    dump_all_task();
+    break;
   }
 }
 

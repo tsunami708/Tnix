@@ -120,3 +120,9 @@ shutdown:
   li a7, SYS_SHUTDOWN
   ecall
   ret
+
+.global ls
+ls:
+  li a7, SYS_LS
+  ecall
+  ret

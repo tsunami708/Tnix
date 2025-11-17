@@ -11,8 +11,8 @@ memset(void* dst, int c, u32 n)
   return dst;
 }
 
-static void*
-memmove(void* dst, const void* src, u32 n)
+void*
+memcpy(void* dst, const void* src, u32 n)
 {
   const char* s;
   char* d;
@@ -31,22 +31,6 @@ memmove(void* dst, const void* src, u32 n)
       *d++ = *s++;
 
   return dst;
-}
-
-void*
-memcpy(void* dst, const void* src, u32 n)
-{
-  return memmove(dst, src, n);
-}
-
-int
-strncmp(const char* p, const char* q, u32 n)
-{
-  while (n > 0 && *p && *p == *q)
-    n--, p++, q++;
-  if (n == 0)
-    return 0;
-  return (u8)*p - (u8)*q;
 }
 
 char*

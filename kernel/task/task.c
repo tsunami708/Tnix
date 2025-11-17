@@ -155,3 +155,17 @@ reset_vma(struct task* t)
       ++i;
   }
 }
+
+void
+dump_all_task(void)
+{
+  print("pid tid state name\n");
+  for (int i = 0; i < NPROC; ++i) {
+    struct task* t = &task_queue[i];
+    spin_get(&t->lock);
+    if (t->state == READY || t->state == RUN || t->state == SLEEP)
+      print("%d  %d  %s %s\n", t->pid, t->tid, t->state == READY ? "READY" : (t->state == RUN ? "RUN" : "SLEEP"),
+            t->tname);
+    spin_put(&t->lock);
+  }
+}
