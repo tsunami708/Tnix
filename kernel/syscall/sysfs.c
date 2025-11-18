@@ -187,7 +187,7 @@ sys_open(struct pt_regs* pt)
   f->inode = in;
   f->type = in->di.type == CHAR ? DEVICE : INODE;
   f->mode = mode;
-  f->off = in->di.fsize;
+  f->off = mode & O_APPEND ? in->di.fsize : 0;
   u64 r = t->files.i;
   t->files.f[r] = f;
   move_fdi(t);

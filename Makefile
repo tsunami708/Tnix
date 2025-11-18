@@ -117,7 +117,10 @@ clean:
 	\) -exec rm -f {} +
 	rm -f $K/kernel $U/bin/* *.dtb
 
-fs.img: $(PROGS)
+udir:
+	mkdir -p $U/asm $U/bin $U/dev
+
+fs.img: udir $(PROGS)
 	rm -rf mkfs/mkfs fs.img
 	g++ mkfs/mkfs.cc -o mkfs/mkfs -I. -std=c++17 -g
 	mkfs/mkfs user

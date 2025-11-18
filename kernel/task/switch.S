@@ -66,5 +66,5 @@ run_new_task:
   csrw satp, a0  #切换用户task页表
   sfence.vma zero, zero
   mv sp, a1
-  mv a0, sp
+  mv a0, a2
   sret

@@ -71,10 +71,13 @@ main(void)
     }
 
     if (cmd == CMD_CD) {
-      if (chdir(option))
+      if (! option || *option == '\0' || chdir(option))
         write(STDOUT, "invalid path\n", 13);
     } else if (cmd == CMD_LS) {
-      ls();
+      if (option && *option)
+        write(STDOUT, "invalid opt\n", 12);
+      else
+        ls();
     } else {
       pid = fork();
       if (pid == 0) {

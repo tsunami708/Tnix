@@ -42,7 +42,8 @@ first_sched(void)
   w_stvec((u64)utrap_entry - (u64)trampoline + TRAMPOLINE);
   w_sstatus((r_sstatus() & ~SSTATUS_SPP) | SSTATUS_SPIE);
   w_sepc(t->entry);
-  ((void (*)(u64, u64))_start)(mycpu()->cur_satp, t->ustack);
+  ((void (*)(u64, u64, u64))_start)(mycpu()->cur_satp, t->ustack, t->ustack == USTACK + PGSIZE ? 0 : t->ustack);
+  // t->ustack == USTACK + PGSIZE表示没有选项参数
 }
 
 void

@@ -90,6 +90,7 @@ uart_write(const char* ustr, u32 len)
       w_reg(THR, buf[i]);
     }
     len -= size;
+    ustr += size;
   }
   spin_put(&tx);
 }
