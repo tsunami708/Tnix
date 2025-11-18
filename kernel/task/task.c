@@ -79,6 +79,7 @@ task_init(struct task* t, struct task* parent)
   if (parent) {
     t->parent = parent;
     t->cwd = parent->cwd;
+    t->next_heap = parent->next_heap;
     iget(t->cwd->sb, t->cwd->inum);
     copy_pagetable(t, parent);
     copy_files(t, parent);

@@ -1,11 +1,41 @@
+#include "errno.h"
 #include "syscall/syscall.h"
+#include "trap/pt_reg.h"
+#include "mem/alloc.h"
+
 u64
-sys_mmap(struct pt_regs* pt)
+sys_alloc(struct pt_regs*)
 {
-  return 0;
+  struct task* t = mytask();
+  if (t->next_heap == USTACK)
+    return 0;
+  struct page* p = alloc_page_for_task(t);
+  u16 attr = PTE_U | PTE_W | PTE_R;
+  if (! task_vmmap(t, t->next_heap, p->paddr, PGSIZE, attr, HEAP)) {
+    free_page_for_task(p);
+    return 0;
+  }
+  u64 r = t->next_heap;
+  t->next_heap += PGSIZE;
+  return r;
 }
 u64
-sys_munmap(struct pt_regs* pt)
+sys_free(struct pt_regs* pt)
 {
-  return 0;
+  if (pt->a0 == 0)
+    return -EINVAL;
+  if (pt->a0 % PGSIZE)
+    return -EINVAL;
+  struct task* t = mytask();
+  for (int i = 0; i < t->vmas.nvma; ++i) {
+    if (t->vmas.vmas[i].type == HEAP && t->vmas.vmas[i].va == pt->a0) {
+      vmunmap(t->pagetable, t->vmas.vmas[i].va, t->vmas.vmas[i].len);
+      free_page_for_task(page(t->vmas.vmas[i].pa));
+      for (int j = i; j < t->vmas.nvma - 1; j++)
+        t->vmas.vmas[j] = t->vmas.vmas[j + 1];
+      t->vmas.nvma--;
+      return 0;
+    }
+  }
+  return -EINVAL;
 }

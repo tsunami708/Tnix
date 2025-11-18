@@ -49,5 +49,6 @@
 #define NFILE             16 // 进程文件打开最大数
 #define NIOBUF            16 // IO缓存块最大数
 #define NINODE            50 // ionode缓存最大数
+#define NVMA              12
 #define MAX_PATH_LENGTH   128
 #define BIT_CNT_PER_BLOCK (BSIZE * 8)

@@ -1,6 +1,7 @@
 #pragma once
 #define USER
 #include "kernel/fs/file.h"
+
 #define NULL nullptr
 int fork(void);
 int exit(int status);
@@ -18,8 +19,8 @@ int mkdir(const char* path);
 int rmdir(const char* path);
 int mknod(const char* path, unsigned int dev); // 只能创建字符设备文件
 int chdir(const char* path);
-void* mmap(void* addr, unsigned int length, int prot);
-int munmap(void* addr, unsigned int length);
+void* alloc(void);
+int free(void* addr);
 int pipe(int fd[2]);
 int shutdown(void);
 int ls(void);

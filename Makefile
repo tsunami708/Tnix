@@ -5,7 +5,7 @@ LD = riscv64-linux-gnu-ld
 OBJDUMP = riscv64-linux-gnu-objdump
 
 #编译器属性
-CFLAGS = -Wall -Werror -Wno-unknown-attributes -Wstrict-prototypes -O0 -fomit-frame-pointer -ggdb -gdwarf-2
+CFLAGS = -Wall -Werror -Wno-unknown-attributes -Wstrict-prototypes -O0 -fomit-frame-pointer -g -gdwarf-2
 CFLAGS += -std=gnu23
 CFLAGS += -fno-common -nostdlib -ffreestanding
 CFLAGS += -fno-builtin-strncpy -fno-builtin-strncmp -fno-builtin-strlen -fno-builtin-memset
@@ -80,6 +80,7 @@ PROGS = \
 	$U/bin/rmdir \
 	$U/bin/rm \
 	$U/bin/touch \
+	$U/bin/test \
 
 $K/kernel: $(OBJS) $K/kernel.ld
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS) 

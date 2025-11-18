@@ -89,15 +89,18 @@ mvmmap(pagetable_t ptb, u64 va, u64 pa, u64 size, u16 attr)
 
 
 //! trampoline,trapframe页的映射直接走vmmap,不使用task_vmmap
-void
+bool
 task_vmmap(struct task* t, u64 va, u64 pa, u64 size, u16 attr, enum vma_type type)
 {
+  if (t->vmas.nvma == NVMA)
+    return false;
   do_vmmap(t->pagetable, va, pa, size, attr, S_PAGE, t);
   t->vmas.vmas[t->vmas.nvma].va = va;
   t->vmas.vmas[t->vmas.nvma].pa = pa;
   t->vmas.vmas[t->vmas.nvma].len = size;
   t->vmas.vmas[t->vmas.nvma].attr = attr;
   t->vmas.vmas[t->vmas.nvma++].type = type;
+  return true;
 }
 
 void

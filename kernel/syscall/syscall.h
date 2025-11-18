@@ -1,5 +1,5 @@
 #pragma once
-
+#ifndef USER
 #define SYS_FORK     0
 #define SYS_EXIT     1
 #define SYS_EXEC     2
@@ -16,8 +16,8 @@
 #define SYS_RMDIR    13
 #define SYS_MKNOD    14
 #define SYS_CHDIR    15
-#define SYS_MMAP     16
-#define SYS_MUNMAP   17
+#define SYS_ALLOC    16
+#define SYS_FREE     17
 #define SYS_PIPE     18
 #define SYS_SHUTDOWN 19
 #define SYS_LS       20
@@ -44,10 +44,11 @@ u64 sys_mkdir(struct pt_regs* pt);
 u64 sys_rmdir(struct pt_regs* pt);
 u64 sys_mknod(struct pt_regs* pt);
 u64 sys_chdir(struct pt_regs* pt);
-u64 sys_mmap(struct pt_regs* pt);
-u64 sys_munmap(struct pt_regs* pt);
+u64 sys_alloc(struct pt_regs* pt);
+u64 sys_free(struct pt_regs* pt);
 u64 sys_pipe(struct pt_regs* pt);
 u64 sys_shutdown(struct pt_regs* pt);
 u64 sys_ls(struct pt_regs* pt);
+#endif
 
 #endif

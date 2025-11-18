@@ -97,15 +97,15 @@ chdir:
   ecall
   ret
 
-.global mmap
-mmap:
-  li a7, SYS_MMAP
+.global alloc
+alloc:
+  li a7, SYS_ALLOC
   ecall
   ret
 
-.global munmap
-munmap:
-  li a7, SYS_MUNMAP
+.global free
+free:
+  li a7, SYS_FREE
   ecall
   ret
 

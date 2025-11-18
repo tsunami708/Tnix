@@ -64,9 +64,10 @@ struct task {
   struct list_node self;
 
   struct {
-    struct vma vmas[12];
+    struct vma vmas[NVMA];
     int nvma;
   } vmas;
+  u64 next_heap;
 
   char tname[16];
 };
