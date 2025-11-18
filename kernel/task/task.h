@@ -68,7 +68,7 @@ struct task {
     int nvma;
   } vmas;
 
-  const char* tname;
+  char tname[16];
 };
 
 struct task* alloc_task(struct task* p);

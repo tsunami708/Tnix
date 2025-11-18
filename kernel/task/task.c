@@ -65,7 +65,7 @@ task_init(struct task* t, struct task* parent)
   extern char trampoline[];
   struct page* p;
 
-  t->tname = "task";
+  strcpy(t->tname, "task");
   t->lock.lname = "task-lock";
   t->pid = t->tid = alloc_tid();
   list_init(&t->pages);

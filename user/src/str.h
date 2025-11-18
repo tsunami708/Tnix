@@ -9,10 +9,10 @@ strcmp(const char* s1, const char* s2)
   }
   return *s1 != *s2;
 }
-static inline __attribute__((always_inline)) unsigned long
+static inline __attribute__((always_inline)) int
 strlen(const char* str)
 {
-  unsigned long len = 0;
+  int len = 0;
   while (str[len] != '\0')
     len++;
   return len;

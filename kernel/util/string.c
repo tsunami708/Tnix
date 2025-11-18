@@ -1,26 +1,20 @@
 #include "util/string.h"
 
 void*
-memset(void* dst, int c, u32 n)
+memset(void* d, int c, u32 n)
 {
-  char* cdst = (char*)dst;
-  int i;
-  for (i = 0; i < n; i++) {
-    cdst[i] = c;
-  }
-  return dst;
+  for (char* p = d; n--; ++p)
+    *p = c;
+  return d;
 }
 
 void*
 memcpy(void* dst, const void* src, u32 n)
 {
-  const char* s;
-  char* d;
   if (n == 0)
     return dst;
-
-  s = src;
-  d = dst;
+  const char* s = src;
+  char* d = dst;
   if (s < d && s + n > d) {
     s += n;
     d += n;
@@ -29,15 +23,13 @@ memcpy(void* dst, const void* src, u32 n)
   } else
     while (n-- > 0)
       *d++ = *s++;
-
   return dst;
 }
 
 char*
 strncpy(char* s, const char* t, int n)
 {
-  char* os;
-  os = s;
+  char* os = s;
   while (n-- > 0 && (*s++ = *t++) != 0)
     ;
   while (n-- > 0)
@@ -45,12 +37,20 @@ strncpy(char* s, const char* t, int n)
   return os;
 }
 
-
 int
-strlen(const char* s)
+strlen(const char* str)
 {
-  int n;
-  for (n = 0; s[n]; n++)
+  int len = 0;
+  while (str[len] != '\0')
+    len++;
+  return len;
+}
+
+char*
+strcpy(char* dest, const char* src)
+{
+  char* d = dest;
+  while ((*d++ = *src++) != '\0')
     ;
-  return n;
+  return dest;
 }

@@ -66,6 +66,12 @@ sys_exec(struct pt_regs* pt)
     if (f == NULL)
       return -EPATH;
     struct task* t = mytask();
+
+    int off = strlen(path);
+    while (off > 0 && path[off - 1] != '/')
+      --off;
+    strcpy(t->tname, path + off);
+
     if (pt->a1) {
       char option[MAX_PATH_LENGTH / 2] = { 0 };
       argstr(pt->a1, option);
