@@ -17,7 +17,7 @@ SECTIONS
   . = 0x80000000;
 
   .text : {
-    kernel/boot/entry.o(entry)
+    *(.text.entry)
     *(.text)
     PROVIDE(etext = .);
     . = ALIGN(4096);

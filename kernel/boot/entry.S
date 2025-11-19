@@ -1,4 +1,4 @@
-.section .text
+.section .text.entry
 .global entry
 .extern start
 .extern cpu_stack
