@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.31)
 project(Tnix)
 enable_language(ASM)
 set(QEMU qemu-system-riscv64)
-set(LD riscv64-linux-gnu-ld)
+set(PYTHON python3)
 set(OBJDUMP riscv64-linux-gnu-objdump)
 set(CMAKE_C_COMPILER riscv64-linux-gnu-gcc)
 set(CMAKE_ASM_COMPILER ${CMAKE_C_COMPILER})
@@ -11,7 +11,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_C_FLAGS
   "-Wall -Werror -Wno-unknown-attributes -Wstrict-prototypes -Wno-main \
-  -O0 -g -gdwarf-2 -nostdlib -std=gnu23\
+  -O0 -g -gdwarf-2 -nostdlib -nostdinc -std=gnu23 -Wno-gnu-designator \
   -fno-common -ffreestanding -fno-stack-protector -fomit-frame-pointer \
   -fno-pie -no-pie -mcmodel=medany \
   -fno-builtin-strncpy -fno-builtin-strncmp -fno-builtin-strlen \
@@ -89,8 +89,13 @@ add_custom_target(qemu
   COMMENT "Running kernel in QEMU"
 )
 
+add_custom_target(gdbinit
+  COMMAND ${PYTHON} ${CMAKE_SOURCE_DIR}/gdbinit.py ${CMAKE_SOURCE_DIR}/kernel/config.h
+  COMMENT "Build .gdbinit" 
+)
+
 add_custom_target(gdb
   COMMAND ${QEMU} -machine virt -S -s ${QEMUOPTS}
-  DEPENDS kernel fs
+  DEPENDS kernel fs gdbinit
   COMMENT "Running kernel in QEMU-GDB"
 )
