@@ -100,7 +100,7 @@ sys_read(struct pt_regs* pt)
   case INODE:
     return fread(f, udst, len, false);
   case PIPE:
-    return pipewrite(f->pipe, udst, len);
+    return piperead(f->pipe, udst, len);
   }
   return 0;
 }

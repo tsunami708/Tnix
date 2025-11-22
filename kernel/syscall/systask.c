@@ -2,7 +2,6 @@
 #include "syscall/syscall.h"
 #include "trap/pt_reg.h"
 #include "util/string.h"
-#include "util/printf.h"
 #include "task/task.h"
 #include "task/sche.h"
 #include "mem/vm.h"

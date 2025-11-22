@@ -47,10 +47,10 @@ cd build
 make
 
 #直接运行
-make qemu [CPUS=n]
+make qemu 
 
 #调试
-make gdb [CPUS=n] 
+make gdb 
 gdb
 ```
 

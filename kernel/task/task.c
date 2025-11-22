@@ -54,6 +54,7 @@ copy_files(struct task* c, struct task* p)
         iref(f->inode);
       else if (f->type == PIPE)
         pipeget(f->pipe);
+      c->files.f[i] = f;
     }
   }
 }

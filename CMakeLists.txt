@@ -24,15 +24,11 @@ set(CMAKE_C_FLAGS
 set(CMAKE_CXX_FLAGS "-g -std=gnu++17")
 set(CMAKE_EXE_LINKER_FLAGS "-z max-page-size=4096")
 
-
-if(NOT DEFINED CPUS)
-  set(CPUS 4)
-endif()
 set(QEMUOPTS
   -bios none
   -kernel ${CMAKE_BINARY_DIR}/kernel
   -m 512M
-  -smp ${CPUS}
+  -smp 4
   -nographic
   -cpu "rv64,d=false,f=false,zfa=false"
   -global "virtio-mmio.force-legacy=false"
@@ -70,8 +66,6 @@ foreach(source ${USER_SOURCES})
   target_link_options(${prog_name} PRIVATE "LINKER:-T,${CMAKE_SOURCE_DIR}/user/user.ld")
   set_target_properties(${prog_name} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/user/bin)
 endforeach()
-add_custom_target(user DEPENDS ${USER_PROGRAM_TARGETS})
-
 
 add_executable(mkfs ${CMAKE_SOURCE_DIR}/mkfs/mkfs.cc)
 target_include_directories(mkfs PRIVATE ${CMAKE_SOURCE_DIR})
@@ -80,7 +74,7 @@ add_custom_command(
   OUTPUT  ${CMAKE_BINARY_DIR}/fs.img 
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/user/dev
   COMMAND ${CMAKE_BINARY_DIR}/mkfs ${CMAKE_SOURCE_DIR}/user
-  DEPENDS mkfs user
+  DEPENDS mkfs ${USER_PROGRAM_TARGETS}
   COMMENT "Build file system image"
 )
 add_custom_target(fs
