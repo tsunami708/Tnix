@@ -115,6 +115,10 @@ do_console_irq(char ch)
     extern void dump_all_task();
     dump_all_task();
     break;
+  case CTRL('D'):
+    console_putc('\x04');
+    wakeup(&con.r);
+    break;
   }
 }
 

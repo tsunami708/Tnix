@@ -58,7 +58,7 @@ balloc(struct superblock* sb)
         *section |= 1UL << k;
         bwrite(b);
         brelse(b);
-        return i * BIT_CNT_PER_BLOCK + j * sizeof(u64) + k + sb->blocks;
+        return i * BIT_CNT_PER_BLOCK + j * 64 + k + sb->blocks;
       }
     }
   }
@@ -73,10 +73,10 @@ bfree(struct superblock* sb, u32 blockno)
 
   struct buf* b = read_nth_bmap(sb, i);
   u64* section = (void*)b->data;
-  section += k / 8;
-  if (((*section) & (1UL << (k % 8))) == 0)
+  section += k / 64;
+  if (((*section) & (1UL << (k % 64))) == 0)
     panic("bfree: double free");
-  *section &= ~(1UL << (k % 8));
+  *section &= ~(1UL << (k % 64));
   bwrite(b);
   brelse(b);
 }

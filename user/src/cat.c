@@ -31,6 +31,6 @@ main(const char* option)
       break;
     write(STDOUT, buf, n);
   }
-
+  write(STDOUT, "\n", 1);
   exit(0);
 }

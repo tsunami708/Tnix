@@ -60,8 +60,11 @@ main(void)
   while (1) {
     write(STDOUT, "$>", 2);
     int n = read(STDIN, input, sizeof(input) - 1);
-    if (n <= 0 || *input == '\n' || *input == '\r')
+    if (n <= 0 || *input == '\n' || *input == '\x04') {
+      if (*input == '\x04')
+        write(STDOUT, "\n", 1);
       continue;
+    }
     input[n - 1] = 0; // 去除\n
 
     char* option;
