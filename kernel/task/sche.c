@@ -2,7 +2,7 @@
 #include "task/task.h"
 #include "task/cpu.h"
 #include "util/printf.h"
-#include "fs/elf.h"
+#include "task/elf.h"
 #include "fs/file.h"
 
 extern struct task task_queue[NPROC];
@@ -49,17 +49,15 @@ first_sched(void)
 void
 yield(void)
 {
-  // print("CPU %u yield task-%d\n", cpuid(), mytask()->tid);
   struct task* t = mytask();
   spin_get(&t->lock); //``
   t->state = READY;
   context_switch(&t->ctx, &mycpu()->ctx);
   spin_put(&t->lock); //*
-  // print("CPU %u sched task-%d\n", cpuid(), mytask()->tid);
 }
 
 void
-sleep(void* chan, struct spinlock* lock) // 当前在申请睡眠锁时最多只能持有1个自旋锁
+sleep(void* chan, struct spinlock* lock) // 调用sleep时最多只能持有1个自旋锁
 {
   struct task* t = mytask();
 
@@ -117,18 +115,16 @@ task_schedule(void)
     for (int i = 0; i < NPROC; ++i) {
       struct task* t = task_queue + i;
       struct cpu* c = mycpu();
-      spin_get(&t->lock); //*
+      spin_get(&t->lock);
       if (t->state == READY) {
         t->state = RUN;
         c->cur_task = t;
         c->cur_kstack = t->kstack;
         c->cur_satp = SATP_MODE | ((u64)t->pagetable >> 12);
-        __sync_synchronize();
         context_switch(&c->ctx, &t->ctx);
-        __sync_synchronize();
       }
       c->cur_task = NULL; //! 不要在释放线程锁后置空,可能会被中断
-      spin_put(&t->lock); //``
+      spin_put(&t->lock);
     }
   }
 }

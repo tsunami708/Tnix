@@ -7,7 +7,7 @@
 #include "task/sche.h"
 #include "mem/vm.h"
 #include "fs/file.h"
-#include "fs/elf.h"
+#include "task/elf.h"
 
 extern void context_switch(struct context* old, struct context* new);
 extern void first_sched(void);

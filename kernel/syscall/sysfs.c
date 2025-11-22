@@ -384,12 +384,13 @@ sys_ls(struct pt_regs*)
     while (k != cnt) {
       if (*dt->name) {
         memcpy(name, dt->name, DLENGTH);
-        print("%s\n", name);
+        print("%s ", name);
         ++k;
       }
       ++dt;
     }
     brelse(b);
   }
+  print("\n", name);
   return 0;
 }

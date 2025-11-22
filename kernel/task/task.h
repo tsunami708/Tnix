@@ -18,7 +18,6 @@ enum task_state {
   EXIT,
 };
 
-
 struct trapframe {
   u64 ksatp;
 };
@@ -31,41 +30,34 @@ struct vma {
   enum vma_type type;
 };
 
-
 struct task {
-  // 顺序必须固定的字段
-  u64 entry;  // 入口地址
-  u64 ustack; // 用户栈页地址
-  u64 kstack; // 内核栈页地址
-  ////
-
+  u64 entry; // 进程代码入口地址
+  u64 ustack;
+  u64 kstack;
   pagetable_t pagetable;
 
+  struct spinlock lock;
 
   u16 pid, tid;
   struct task* parent;
-  int exit_code;
+  struct list_node childs;
+  struct list_node self;
 
-  void* chan;
+  int exit_code;
+  void* chan; // 等待事件
+  enum task_state state;
+  struct context ctx;
 
   struct {
     struct file* f[NFILE];
     u32 i;
   } files;
-
-  enum task_state state;
-  struct spinlock lock;
-  struct context ctx;
   struct inode* cwd;
 
   struct list_node pages; // 进程私有物理页面链表
-
-  struct list_node childs;
-  struct list_node self;
-
   struct {
-    struct vma vmas[NVMA];
-    int nvma;
+    struct vma v[NVMA];
+    int n;
   } vmas;
   u64 next_heap;
 

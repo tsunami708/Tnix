@@ -92,14 +92,14 @@ mvmmap(pagetable_t ptb, u64 va, u64 pa, u64 size, u16 attr)
 bool
 task_vmmap(struct task* t, u64 va, u64 pa, u64 size, u16 attr, enum vma_type type)
 {
-  if (t->vmas.nvma == NVMA)
+  if (t->vmas.n == NVMA)
     return false;
   do_vmmap(t->pagetable, va, pa, size, attr, S_PAGE, t);
-  t->vmas.vmas[t->vmas.nvma].va = va;
-  t->vmas.vmas[t->vmas.nvma].pa = pa;
-  t->vmas.vmas[t->vmas.nvma].len = size;
-  t->vmas.vmas[t->vmas.nvma].attr = attr;
-  t->vmas.vmas[t->vmas.nvma++].type = type;
+  t->vmas.v[t->vmas.n].va = va;
+  t->vmas.v[t->vmas.n].pa = pa;
+  t->vmas.v[t->vmas.n].len = size;
+  t->vmas.v[t->vmas.n].attr = attr;
+  t->vmas.v[t->vmas.n++].type = type;
   return true;
 }
 
@@ -137,7 +137,7 @@ vmunmap(pagetable_t ptb, u64 va, u64 size) //! 只考虑了4KB的页
 void
 copy_pagetable(struct task* c, struct task* p)
 {
-  struct vma* pvm = &p->vmas.vmas[0];
+  struct vma* pvm = &p->vmas.v[0];
   while (pvm->pa > 0) {
     struct page* p = alloc_page_for_task(c);
     memcpy((void*)p->paddr, (void*)pvm->pa, PGSIZE);

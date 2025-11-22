@@ -128,7 +128,7 @@ clean_source(struct task* t)
   for (int i = 0; i < t->files.i; ++i)
     fclose(t->files.f[i]);
   t->files.i = 0;
-  t->vmas.nvma = 0;
+  t->vmas.n = 0;
 
   struct list_node *cur = t->pages.next, *tmp;
   while (cur != &t->pages) {
@@ -145,13 +145,13 @@ void
 reset_vma(struct task* t)
 {
   int i = 0;
-  while (i < t->vmas.nvma) {
-    if (t->vmas.vmas[i].type == DATA || t->vmas.vmas[i].type == TEXT) {
-      vmunmap(t->pagetable, t->vmas.vmas[i].va, t->vmas.vmas[i].len);
-      free_page_for_task(page(t->vmas.vmas[i].pa));
-      for (int j = i; j < t->vmas.nvma - 1; j++)
-        t->vmas.vmas[j] = t->vmas.vmas[j + 1];
-      t->vmas.nvma--;
+  while (i < t->vmas.n) {
+    if (t->vmas.v[i].type == DATA || t->vmas.v[i].type == TEXT) {
+      vmunmap(t->pagetable, t->vmas.v[i].va, t->vmas.v[i].len);
+      free_page_for_task(page(t->vmas.v[i].pa));
+      for (int j = i; j < t->vmas.n - 1; j++)
+        t->vmas.v[j] = t->vmas.v[j + 1];
+      t->vmas.n--;
     } else
       ++i;
   }

@@ -1,7 +1,6 @@
 #pragma once
 #include "types.h"
 #include "util/list.h"
-#include "util/spinlock.h"
 struct task;
 // 物理页
 struct page {

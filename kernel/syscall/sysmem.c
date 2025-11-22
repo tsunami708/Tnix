@@ -27,13 +27,13 @@ sys_free(struct pt_regs* pt)
   if (pt->a0 % PGSIZE)
     return -EINVAL;
   struct task* t = mytask();
-  for (int i = 0; i < t->vmas.nvma; ++i) {
-    if (t->vmas.vmas[i].type == HEAP && t->vmas.vmas[i].va == pt->a0) {
-      vmunmap(t->pagetable, t->vmas.vmas[i].va, t->vmas.vmas[i].len);
-      free_page_for_task(page(t->vmas.vmas[i].pa));
-      for (int j = i; j < t->vmas.nvma - 1; j++)
-        t->vmas.vmas[j] = t->vmas.vmas[j + 1];
-      t->vmas.nvma--;
+  for (int i = 0; i < t->vmas.n; ++i) {
+    if (t->vmas.v[i].type == HEAP && t->vmas.v[i].va == pt->a0) {
+      vmunmap(t->pagetable, t->vmas.v[i].va, t->vmas.v[i].len);
+      free_page_for_task(page(t->vmas.v[i].pa));
+      for (int j = i; j < t->vmas.n - 1; j++)
+        t->vmas.v[j] = t->vmas.v[j + 1];
+      t->vmas.n--;
       return 0;
     }
   }
