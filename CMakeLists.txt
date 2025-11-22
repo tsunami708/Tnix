@@ -76,22 +76,31 @@ add_custom_target(user DEPENDS ${USER_PROGRAM_TARGETS})
 add_executable(mkfs ${CMAKE_SOURCE_DIR}/mkfs/mkfs.cc)
 target_include_directories(mkfs PRIVATE ${CMAKE_SOURCE_DIR})
 
-add_custom_target(fs
+add_custom_command(
+  OUTPUT  ${CMAKE_BINARY_DIR}/fs.img 
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/user/dev
   COMMAND ${CMAKE_BINARY_DIR}/mkfs ${CMAKE_SOURCE_DIR}/user
   DEPENDS mkfs user
   COMMENT "Build file system image"
+)
+add_custom_target(fs
+  DEPENDS ${CMAKE_BINARY_DIR}/fs.img 
+)
+
+add_custom_command(
+  OUTPUT ${CMAKE_BINARY_DIR}/.gdbinit
+  COMMAND ${PYTHON} ${CMAKE_SOURCE_DIR}/gdbinit.py ${CMAKE_SOURCE_DIR}/kernel/config.h
+  DEPENDS ${CMAKE_SOURCE_DIR}/gdbinit.py ${CMAKE_SOURCE_DIR}/kernel/config.h
+  COMMENT "Build .gdbinit"
+)
+add_custom_target(gdbinit
+  DEPENDS ${CMAKE_BINARY_DIR}/.gdbinit
 )
 
 add_custom_target(qemu
   COMMAND ${QEMU} -machine virt ${QEMUOPTS}
   DEPENDS kernel fs
   COMMENT "Running kernel in QEMU"
-)
-
-add_custom_target(gdbinit
-  COMMAND ${PYTHON} ${CMAKE_SOURCE_DIR}/gdbinit.py ${CMAKE_SOURCE_DIR}/kernel/config.h
-  COMMENT "Build .gdbinit" 
 )
 
 add_custom_target(gdb
