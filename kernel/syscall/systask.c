@@ -1,10 +1,10 @@
 #include "syscall/syscall.h"
 #include "trap/pt_reg.h"
 #include "util/string.h"
+#include "util/list.h"
 #include "task/task.h"
 #include "task/sche.h"
 #include "mem/vm.h"
-#include "fs/file.h"
 #include "task/elf.h"
 
 extern void context_switch(struct context* old, struct context* new);
@@ -37,14 +37,25 @@ sys_fork(struct pt_regs*)
 long
 sys_exit(struct pt_regs* pt)
 {
+  extern struct task task_queue[NPROC];
   struct task* t = mytask();
   t->exit_code = pt->a0;
+
+  struct list_node* child = t->childs.next; // 孤儿进程交给init
+  while (child != &t->childs) {
+    struct task* c = container_of(child, struct task, self);
+    child = child->next;
+    spin_get(&c->lock);
+    c->parent = &task_queue[0];
+    list_remove(&c->self);
+    list_pushback(&task_queue[0].childs, &c->self);
+    spin_put(&c->lock);
+  }
 
   clean_source(t);
 
   t->state = EXIT;
   wakeup(&t->parent->childs);
-
 
   spin_get(&t->lock);
   context_switch(&t->ctx, &mycpu()->ctx);
