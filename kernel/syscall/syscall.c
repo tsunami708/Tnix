@@ -9,6 +9,7 @@ static syscall_t syscalls[] = {
   [SYS_WRITE] sys_write, [SYS_LSEEK] sys_lseek,   [SYS_OPEN] sys_open,   [SYS_DUP] sys_dup,     [SYS_CLOSE] sys_close,
   [SYS_LINK] sys_link,   [SYS_UNLINK] sys_unlink, [SYS_MKDIR] sys_mkdir, [SYS_RMDIR] sys_rmdir, [SYS_MKNOD] sys_mknod,
   [SYS_CHDIR] sys_chdir, [SYS_ALLOC] sys_alloc,   [SYS_FREE] sys_free,   [SYS_PIPE] sys_pipe,   [SYS_LS] sys_ls,
+  [SYS_SLEEP] sys_sleep,
 };
 
 

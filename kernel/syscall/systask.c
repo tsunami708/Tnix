@@ -122,3 +122,13 @@ sys_wait(struct pt_regs* pt)
     sleep(&t->childs, NULL);
   }
 }
+
+long
+sys_sleep(struct pt_regs* pt)
+{
+  extern u64 tstub;
+  u64 texp = r_time() + pt->a0 * TIME_CYCLE;
+  while (tstub < texp)
+    sleep(&tstub, NULL);
+  return 0;
+}

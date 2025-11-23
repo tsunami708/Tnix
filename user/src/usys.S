@@ -120,3 +120,9 @@ ls:
   li a7, SYS_LS
   ecall
   ret
+
+.global sleep
+sleep:
+  li a7, SYS_SLEEP
+  ecall
+  ret

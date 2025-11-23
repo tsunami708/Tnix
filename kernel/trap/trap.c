@@ -132,10 +132,13 @@ do_trap(struct pt_regs* pt)
   w_sepc(sepc);
 }
 
+u64 tstub;
 static void
 asy_timer(struct pt_regs* pt)
 {
-  w_stimecmp(r_time() + TIME_CYCLE);
+  extern void wakeup(void*);
+  w_stimecmp((tstub = r_time()) + TIME_CYCLE);
+  wakeup(&tstub);
   if ((r_sstatus() & SSTATUS_SPP) == 0)
     yield();
 }

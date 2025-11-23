@@ -23,6 +23,7 @@ void* alloc(void);
 int free(void* addr);
 int pipe(int fd[2]);
 int ls(void);
+int sleep(int scalar);
 
 #define STDIN  0
 #define STDOUT 1
