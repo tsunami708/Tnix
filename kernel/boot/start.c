@@ -55,9 +55,3 @@ start(void)
   // 2:将处理器模式设置成之前保存到MPP字段的处理器模式。
   // 3:mepc寄存器保存的值设置到PC寄存器中
 }
-
-void
-poweroff(void)
-{
-  *(volatile int*)POWER = 0x5555;
-}

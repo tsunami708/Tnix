@@ -5,12 +5,10 @@
 
 
 static syscall_t syscalls[] = {
-  [SYS_FORK] sys_fork,   [SYS_EXIT] sys_exit,   [SYS_EXEC] sys_exec,   [SYS_WAIT] sys_wait,
-  [SYS_READ] sys_read,   [SYS_WRITE] sys_write, [SYS_LSEEK] sys_lseek, [SYS_OPEN] sys_open,
-  [SYS_DUP] sys_dup,     [SYS_CLOSE] sys_close, [SYS_LINK] sys_link,   [SYS_UNLINK] sys_unlink,
-  [SYS_MKDIR] sys_mkdir, [SYS_RMDIR] sys_rmdir, [SYS_MKNOD] sys_mknod, [SYS_CHDIR] sys_chdir,
-  [SYS_ALLOC] sys_alloc, [SYS_FREE] sys_free,   [SYS_PIPE] sys_pipe,   [SYS_SHUTDOWN] sys_shutdown,
-  [SYS_LS] sys_ls,
+  [SYS_FORK] sys_fork,   [SYS_EXIT] sys_exit,     [SYS_EXEC] sys_exec,   [SYS_WAIT] sys_wait,   [SYS_READ] sys_read,
+  [SYS_WRITE] sys_write, [SYS_LSEEK] sys_lseek,   [SYS_OPEN] sys_open,   [SYS_DUP] sys_dup,     [SYS_CLOSE] sys_close,
+  [SYS_LINK] sys_link,   [SYS_UNLINK] sys_unlink, [SYS_MKDIR] sys_mkdir, [SYS_RMDIR] sys_rmdir, [SYS_MKNOD] sys_mknod,
+  [SYS_CHDIR] sys_chdir, [SYS_ALLOC] sys_alloc,   [SYS_FREE] sys_free,   [SYS_PIPE] sys_pipe,   [SYS_LS] sys_ls,
 };
 
 
@@ -37,11 +35,4 @@ argstr(u64 uaddr, char* path)
     return false;
   memcpy(path, (void*)paddr, len);
   return true;
-}
-
-u64
-sys_shutdown(struct pt_regs*)
-{
-  [[noreturn]] extern void poweroff(void);
-  poweroff();
 }

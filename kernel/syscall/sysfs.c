@@ -1,5 +1,4 @@
 #include "config.h"
-#include "errno.h"
 #include "fs/file.h"
 #include "fs/inode.h"
 #include "fs/dir.h"
@@ -27,7 +26,7 @@ create(const char* path, enum ftype type, dev_t dev)
   struct inode* in = dentry_find(path);
   if (in) {
     iput(in);
-    return -EEXIST;
+    return -1;
   }
 
   // 2.检查父目录是否存在
@@ -35,7 +34,7 @@ create(const char* path, enum ftype type, dev_t dev)
   path_split(path, parentpath, filename);
   struct inode* parent = dentry_find(parentpath);
   if (parent == NULL)
-    return -EPATH;
+    return -1;
 
   // 3.申请inode节点~创建文件元数据
   struct superblock* sb = parent->sb;
@@ -80,7 +79,7 @@ move_fdi(struct task* t)
   }
 }
 
-u64
+long
 sys_read(struct pt_regs* pt)
 {
   int fd = pt->a0;
@@ -89,12 +88,12 @@ sys_read(struct pt_regs* pt)
   struct task* t = mytask();
   struct file* f = t->files.f[fd];
   if (f == NULL)
-    return -EINVAL;
+    return -1;
   if ((f->mode & O_RDONLY) == 0 && (f->mode & O_RDWR) == 0)
-    return -EACCES;
+    return -1;
   switch (f->type) {
   case NONE:
-    return -EINVAL;
+    return -1;
   case DEVICE:
     return devsw[t->files.f[fd]->inode->di.dev].read(udst, len);
   case INODE:
@@ -105,7 +104,7 @@ sys_read(struct pt_regs* pt)
   return 0;
 }
 
-u64
+long
 sys_write(struct pt_regs* pt)
 {
   int fd = pt->a0;
@@ -114,12 +113,12 @@ sys_write(struct pt_regs* pt)
   struct task* t = mytask();
   struct file* f = t->files.f[fd];
   if (f == NULL)
-    return -EINVAL;
+    return -1;
   if ((f->mode & O_WRONLY) == 0 && (f->mode & O_RDWR) == 0)
-    return -EACCES;
+    return -1;
   switch (f->type) {
   case NONE:
-    return -EINVAL;
+    return -1;
   case DEVICE:
     return devsw[t->files.f[fd]->inode->di.dev].write(usrc, len);
   case INODE:
@@ -130,38 +129,38 @@ sys_write(struct pt_regs* pt)
   return 0;
 }
 
-u64
+long
 sys_lseek(struct pt_regs* pt)
 {
   int fd = pt->a0, off = pt->a1;
   struct file* f = mytask()->files.f[fd];
   if (f == NULL || f->type != INODE)
-    return -EINVAL;
+    return -1;
   return fseek(f, off, SEEK_CUR);
 }
 
-u64
+long
 sys_mknod(struct pt_regs* pt)
 {
   if (pt->a0 == 0)
-    return -EINVAL;
+    return -1;
   char path[MAX_PATH_LENGTH] = { 0 };
   if (argstr(pt->a0, path) == false)
-    return -EPATH;
+    return -1;
   return create(path, CHAR, pt->a1);
 }
 
-u64
+long
 sys_open(struct pt_regs* pt)
 {
   if (pt->a0 == 0)
-    return -EINVAL;
+    return -1;
   char path[MAX_PATH_LENGTH] = { 0 };
   if (argstr(pt->a0, path) == false)
-    return -EPATH;
+    return -1;
   int mode = pt->a1;
   if ((mode & O_RDONLY) && (mode & O_WRONLY) && ((mode & O_RDWR) == 0))
-    return -EACCES;
+    return -1;
   struct inode* in = dentry_find(path);
   if (in == NULL) {
     if (mode & O_CREAT) {
@@ -171,11 +170,11 @@ sys_open(struct pt_regs* pt)
       else
         in = dentry_find(path);
     } else
-      return -EPATH;
+      return -1;
   }
   if (in->di.type == DIRECTORY) {
     iput(in);
-    return -EISDIR;
+    return -1;
   }
   if ((mode & O_APPEND) == 0 && (mode & O_WRONLY || mode & O_RDWR)) {
     itrunc(in);
@@ -188,60 +187,60 @@ sys_open(struct pt_regs* pt)
   f->type = in->di.type == CHAR ? DEVICE : INODE;
   f->mode = mode;
   f->off = mode & O_APPEND ? in->di.fsize : 0;
-  u64 r = t->files.i;
+  long r = t->files.i;
   t->files.f[r] = f;
   move_fdi(t);
   return r;
 }
 
-u64
+long
 sys_dup(struct pt_regs* pt)
 {
   struct task* t = mytask();
   int fd = pt->a0;
   if (t->files.f[fd] == NULL)
-    return -EINVAL;
-  u64 r = t->files.i;
+    return -1;
+  long r = t->files.i;
   fdup(t->files.f[fd]);
   t->files.f[r] = t->files.f[fd];
   move_fdi(t);
   return r;
 }
 
-u64
+long
 sys_close(struct pt_regs* pt)
 {
   struct task* t = mytask();
   int fd = pt->a0;
   if (t->files.f[fd] == NULL)
-    return -EINVAL;
+    return -1;
   fclose(t->files.f[fd]);
   t->files.f[fd] = NULL;
   t->files.i = min(fd, t->files.i);
   return 0;
 }
 
-u64
+long
 sys_link(struct pt_regs* pt)
 {
   if (pt->a0 == 0 || pt->a1 == 0)
-    return -EINVAL;
+    return -1;
   char oldpath[MAX_PATH_LENGTH] = { 0 }, newpath[MAX_PATH_LENGTH] = { 0 };
   if (argstr(pt->a0, oldpath) == false || argstr(pt->a1, newpath) == false)
-    return -EPATH;
+    return -1;
 
   struct inode* in = dentry_find(newpath);
   if (in) { // 目录项重复
     iput(in);
-    return -EEXIST;
+    return -1;
   }
 
   in = dentry_find(oldpath);
   if (in == NULL)
-    return -EPATH;
+    return -1;
   if (in->di.type != REGULAR) {
     iput(in);
-    return -EINVAL;
+    return -1;
   }
 
   u32 inum = in->inum;
@@ -257,20 +256,20 @@ sys_link(struct pt_regs* pt)
   return 0;
 }
 
-u64
+long
 sys_unlink(struct pt_regs* pt)
 {
   if (pt->a0 == 0)
-    return -EINVAL;
+    return -1;
   char path[MAX_PATH_LENGTH] = { 0 };
   if (argstr(pt->a0, path) == false)
-    return -EPATH;
+    return -1;
   struct inode* in = dentry_find(path);
   if (in == NULL)
-    return -EPATH;
+    return -1;
   if (in->di.type != REGULAR) {
     iput(in);
-    return -EINVAL;
+    return -1;
   }
   --in->di.nlink;
   if (in->di.nlink == 0)
@@ -288,36 +287,36 @@ sys_unlink(struct pt_regs* pt)
   return 0;
 }
 
-u64
+long
 sys_mkdir(struct pt_regs* pt)
 {
   if (pt->a0 == 0)
-    return -EINVAL;
+    return -1;
   char path[MAX_PATH_LENGTH] = { 0 };
   if (argstr(pt->a0, path) == false)
-    return -EPATH;
+    return -1;
   return create(path, DIRECTORY, -1);
 }
 
-u64
+long
 sys_rmdir(struct pt_regs* pt)
 {
   if (pt->a0 == 0)
-    return -EINVAL;
+    return -1;
   char path[MAX_PATH_LENGTH] = { 0 };
   if (argstr(pt->a0, path) == false)
-    return -EPATH;
+    return -1;
   struct inode* c = dentry_find(path);
   if (c == NULL)
-    return -EPATH;
+    return -1;
   if (c->di.type != DIRECTORY)
-    return -EINVAL;
+    return -1;
 
   // 检查是否为空目录
   struct buf* b = bread(c->sb->dev, c->di.iblock[0]);
   if (*(u64*)b->data != 2) {
     brelse(b);
-    return -ENEMPTY;
+    return -1;
   }
   brelse(b);
   iput(c);
@@ -332,27 +331,27 @@ sys_rmdir(struct pt_regs* pt)
   return 0;
 }
 
-u64
+long
 sys_chdir(struct pt_regs* pt)
 {
   if (pt->a0 == 0)
-    return -EINVAL;
+    return -1;
   char path[MAX_PATH_LENGTH] = { 0 };
   if (argstr(pt->a0, path) == false)
-    return -EPATH;
+    return -1;
   struct inode* in = dentry_find(path);
   if (in == NULL)
-    return -EPATH;
+    return -1;
   iput(mytask()->cwd);
   mytask()->cwd = in;
   return 0;
 }
 
-u64
+long
 sys_pipe(struct pt_regs* pt)
 {
   if (pt->a0 == 0)
-    return -EINVAL;
+    return -1;
   int* fds = (int*)pt->a0;
   struct task* t = mytask();
   struct pipe* p = pipealloc();
@@ -371,7 +370,7 @@ sys_pipe(struct pt_regs* pt)
   return 0;
 }
 
-u64
+long
 sys_ls(struct pt_regs*)
 {
   char name[DLENGTH + 1] = { 0 };

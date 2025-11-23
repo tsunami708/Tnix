@@ -1,9 +1,8 @@
-#include "errno.h"
 #include "syscall/syscall.h"
 #include "trap/pt_reg.h"
 #include "mem/alloc.h"
 
-u64
+long
 sys_alloc(struct pt_regs*)
 {
   struct task* t = mytask();
@@ -15,17 +14,17 @@ sys_alloc(struct pt_regs*)
     free_page_for_task(p);
     return 0;
   }
-  u64 r = t->next_heap;
+  long r = t->next_heap;
   t->next_heap += PGSIZE;
   return r;
 }
-u64
+long
 sys_free(struct pt_regs* pt)
 {
   if (pt->a0 == 0)
-    return -EINVAL;
+    return -1;
   if (pt->a0 % PGSIZE)
-    return -EINVAL;
+    return -1;
   struct task* t = mytask();
   for (int i = 0; i < t->vmas.n; ++i) {
     if (t->vmas.v[i].type == HEAP && t->vmas.v[i].va == pt->a0) {
@@ -37,5 +36,5 @@ sys_free(struct pt_regs* pt)
       return 0;
     }
   }
-  return -EINVAL;
+  return -1;
 }

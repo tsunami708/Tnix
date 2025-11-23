@@ -1,4 +1,3 @@
-#include "errno.h"
 #include "syscall/syscall.h"
 #include "trap/pt_reg.h"
 #include "util/string.h"
@@ -11,8 +10,7 @@
 extern void context_switch(struct context* old, struct context* new);
 extern void first_sched(void);
 
-
-u64
+long
 sys_fork(struct pt_regs*)
 {
   extern void dump_context(struct context * ctx);
@@ -20,7 +18,7 @@ sys_fork(struct pt_regs*)
   struct task* p = mytask();
   struct task* c = alloc_task(p);
   if (c == NULL)
-    return -ENOMEM;
+    return -1;
   list_pushback(&p->childs, &c->self);
   memcpy((void*)c->kstack - PGSIZE, (void*)p->kstack - PGSIZE, PGSIZE);
   dump_context(&c->ctx);
@@ -36,7 +34,7 @@ sys_fork(struct pt_regs*)
   }
 }
 
-u64
+long
 sys_exit(struct pt_regs* pt)
 {
   struct task* t = mytask();
@@ -47,14 +45,13 @@ sys_exit(struct pt_regs* pt)
   t->state = EXIT;
   wakeup(&t->parent->childs);
 
-  // print("process %d done\n", t->pid);
 
   spin_get(&t->lock);
   context_switch(&t->ctx, &mycpu()->ctx);
   return 0;
 }
 
-u64
+long
 sys_exec(struct pt_regs* pt)
 {
   if (pt->a0) {
@@ -63,7 +60,7 @@ sys_exec(struct pt_regs* pt)
     struct elfhdr eh;
     struct file* f = read_elfhdr(path, &eh);
     if (f == NULL)
-      return -EPATH;
+      return -1;
     struct task* t = mytask();
 
     int off = strlen(path);
@@ -87,15 +84,15 @@ sys_exec(struct pt_regs* pt)
     spin_get(&t->lock);
     context_switch(NULL, &mycpu()->ctx);
   }
-  return -EINVAL;
+  return -1;
 }
 
-u64
+long
 sys_wait(struct pt_regs* pt)
 {
   struct task* t = mytask();
   if (t->childs.next == &t->childs)
-    return -ECHILD;
+    return -1;
 
   while (1) {
     struct list_node* child = t->childs.next;

@@ -22,7 +22,6 @@ int chdir(const char* path);
 void* alloc(void);
 int free(void* addr);
 int pipe(int fd[2]);
-int shutdown(void);
 int ls(void);
 
 #define STDIN  0
