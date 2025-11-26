@@ -51,7 +51,7 @@ struct page*
 alloc_page_for_task(struct task* t)
 {
   struct page* p = alloc_page();
-  list_pushback(&t->pages, &p->page_node);
+  list_pushback(&t->mm_struct->page_head, &p->page_node);
   return p;
 }
 

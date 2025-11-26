@@ -6,6 +6,9 @@
 #define MPGSIZE (PGSIZE << 9)  // 2MB
 #define GPGSIZE (PGSIZE << 18) // 1GB
 
+#define NVMA_SLOT       3
+#define NMM_STURCT_SLOT 5
+
 // 地址空间
 #define MAXVA      0x3FFFFFFFFFUL        // 最大合法虚拟地址
 #define VA_TOP     0x4000000000UL        // MAXVA+1
@@ -49,6 +52,5 @@
 #define NFILE             16 // 进程文件打开最大数
 #define NIOBUF            16 // IO缓存块最大数
 #define NINODE            50 // ionode缓存最大数
-#define NVMA              12
 #define MAX_PATH_LENGTH   128
 #define BIT_CNT_PER_BLOCK (BSIZE * 8)

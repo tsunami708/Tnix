@@ -4,6 +4,7 @@ volatile bool cpu_ok = false;
 
 extern void init_memory(void);
 extern void init_page(void);
+extern void init_slot(void);
 extern void init_trap(void);
 extern void init_plic(void);
 extern void init_proc1(void);
@@ -21,12 +22,13 @@ main(void)
     init_console(); // 终端初始化
     init_memory();  // 物理地址初始化
     init_page();    // 内核页表初始化
-    init_trap();    // 陷阱处理初始化
-    init_plic();    // 中断控制器初始化
-    init_bcache();  // IO缓冲区初始化
-    init_icache();  // inode表初始化
-    init_disk();    // 硬盘初始化
-    init_proc1();   // 启动1号用户任务
+    init_slot();
+    init_trap();   // 陷阱处理初始化
+    init_plic();   // 中断控制器初始化
+    init_bcache(); // IO缓冲区初始化
+    init_icache(); // inode表初始化
+    init_disk();   // 硬盘初始化
+    init_proc1();  // 启动1号用户任务
     __sync_synchronize();
     cpu_ok = true;
   } else {

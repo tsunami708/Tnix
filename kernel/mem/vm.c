@@ -1,5 +1,6 @@
 #include "mem/alloc.h"
 #include "mem/vm.h"
+#include "mem/slot.h"
 #include "util/printf.h"
 #include "util/riscv.h"
 #include "util/string.h"
@@ -68,7 +69,7 @@ do_vmmap(pagetable_t ptb, u64 va, u64 pa, u64 size, u16 attr, i8 gra, struct tas
         struct page* p = alloc_page();
         u64 new_pt_pa = p->paddr;
         if (ut) // 非内核页表映射
-          list_pushback(&ut->pages, &p->page_node);
+          list_pushback(&ut->mm_struct->page_head, &p->page_node);
         *pte = ((new_pt_pa >> 12) << 10) | PTE_V;
       }
       cur = (pte_t*)((*pte >> 10) << 12); // 进入下一级页表
@@ -89,18 +90,17 @@ mvmmap(pagetable_t ptb, u64 va, u64 pa, u64 size, u16 attr)
 
 
 //! trampoline,trapframe页的映射直接走vmmap,不使用task_vmmap
-bool
+void
 task_vmmap(struct task* t, u64 va, u64 pa, u64 size, u16 attr, enum vma_type type)
 {
-  if (t->vmas.n == NVMA)
-    return false;
-  do_vmmap(t->pagetable, va, pa, size, attr, S_PAGE, t);
-  t->vmas.v[t->vmas.n].va = va;
-  t->vmas.v[t->vmas.n].pa = pa;
-  t->vmas.v[t->vmas.n].len = size;
-  t->vmas.v[t->vmas.n].attr = attr;
-  t->vmas.v[t->vmas.n++].type = type;
-  return true;
+  struct vma* v = alloc_vma_slot();
+  v->va = va;
+  v->pa = pa;
+  v->size = size;
+  v->attr = attr;
+  v->type = type;
+  list_pushback(&t->mm_struct->vma_head, &v->node);
+  svmmap(t->pagetable, va, pa, size, attr, t);
 }
 
 void
@@ -137,12 +137,16 @@ vmunmap(pagetable_t ptb, u64 va, u64 size) //! 只考虑了4KB的页
 void
 copy_pagetable(struct task* c, struct task* p)
 {
-  struct vma* pvm = &p->vmas.v[0];
-  while (pvm->pa > 0) {
-    struct page* p = alloc_page_for_task(c);
-    memcpy((void*)p->paddr, (void*)pvm->pa, PGSIZE);
-    task_vmmap(c, pvm->va, p->paddr, pvm->len, pvm->attr, pvm->type);
-    ++pvm;
+  struct vma* pvm;
+  struct page* page;
+  struct list_node* node = p->mm_struct->vma_head.next;
+
+  while (node != &p->mm_struct->vma_head) {
+    pvm = container_of(node, struct vma, node);
+    page = alloc_page_for_task(c);
+    memcpy((void*)page->paddr, (void*)pvm->pa, PGSIZE);
+    task_vmmap(c, pvm->va, page->paddr, pvm->size, pvm->attr, pvm->type);
+    node = node->next;
   }
 }
 

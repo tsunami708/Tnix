@@ -22,14 +22,6 @@ struct trapframe {
   u64 ksatp;
 };
 
-struct vma {
-  u64 va;
-  u64 pa;
-  u64 len;
-  u16 attr;
-  enum vma_type type;
-};
-
 struct task {
   u64 entry; // 进程代码入口地址
   u64 ustack;
@@ -54,12 +46,7 @@ struct task {
   } files;
   struct inode* cwd;
 
-  struct list_node pages; // 进程私有物理页面链表
-  struct {
-    struct vma v[NVMA];
-    int n;
-  } vmas;
-  u64 next_heap;
+  struct mm_struct* mm_struct;
 
   char tname[16];
 };

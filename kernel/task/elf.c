@@ -48,7 +48,7 @@ load_segment(struct task* t, struct file* f, struct elfhdr* eh)
     fread(f, &pg, sizeof(pg), true);
     if (pg.type == ELF_PROG_LOAD && (pg.filesz > 0 || pg.memsz > 0)) {
       struct page* p = alloc_page();
-      list_pushback(&t->pages, &p->page_node);
+      list_pushback(&t->mm_struct->page_head, &p->page_node);
       int roff = fseek(f, pg.off, SEEK_SET);
       fread(f, (void*)p->paddr, pg.filesz, true);
       fseek(f, roff, SEEK_SET);
@@ -61,7 +61,7 @@ load_segment(struct task* t, struct file* f, struct elfhdr* eh)
       if (pg.flags & ELF_PROG_FLAG_EXEC)
         attr |= PTE_X;
       task_vmmap(t, pg.vaddr, p->paddr, PGSIZE, attr, (attr & PTE_X) ? TEXT : DATA);
-      t->next_heap = pg.vaddr + PGSIZE;
+      t->mm_struct->next_heap = pg.vaddr + PGSIZE;
     }
   }
 }

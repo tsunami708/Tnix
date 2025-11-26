@@ -1,6 +1,7 @@
 #include "task/task.h"
 #include "mem/alloc.h"
 #include "mem/vm.h"
+#include "mem/slot.h"
 #include "util/string.h"
 #include "util/spinlock.h"
 #include "util/printf.h"
@@ -60,47 +61,66 @@ copy_files(struct task* c, struct task* p)
 }
 
 static void
-task_init(struct task* t, struct task* parent)
+task_info_init(struct task* t, struct task* p)
 {
-  extern u64 kernel_satp;
-  extern char trampoline[];
-  struct page* p;
-
   strcpy(t->tname, "task");
   t->lock.lname = "task-lock";
   t->pid = t->tid = alloc_tid();
-  list_init(&t->pages);
+  t->parent = p;
   list_init(&t->childs);
+}
 
-  //* 分配页表
-  p = alloc_page_for_task(t);
-  t->pagetable = (pagetable_t)p->paddr;
+static void
+task_mm_init(struct task* t, struct task* p)
+{
+  struct mm_struct *tm = alloc_mm_struct_slot(), *pm = p ? p->mm_struct : NULL;
+  t->mm_struct = tm;
+  list_init(&tm->vma_head);
+  list_init(&tm->page_head);
+  tm->next_heap = p ? pm->next_heap : 0;
+
+  // 分配页表
+  struct page* page = alloc_page_for_task(t);
+  t->pagetable = (pagetable_t)page->paddr;
   t->ustack = USTACK + PGSIZE;
 
-  if (parent) {
-    t->parent = parent;
-    t->cwd = parent->cwd;
-    t->next_heap = parent->next_heap;
-    iget(t->cwd->sb, t->cwd->inum);
-    copy_pagetable(t, parent);
-    copy_files(t, parent);
+  if (p) {
+    copy_pagetable(t, p);
   } else {
-    //* 分配用户栈
-    p = alloc_page_for_task(t);
-    task_vmmap(t, USTACK, p->paddr, PGSIZE, PTE_R | PTE_W | PTE_U, STACK);
+    page = alloc_page_for_task(t);
+    task_vmmap(t, USTACK, page->paddr, PGSIZE, PTE_R | PTE_W | PTE_U, STACK);
   }
 
-  //* 分配内核栈
-  p = alloc_page_for_task(t);
-  t->kstack = p->paddr + PGSIZE;
+  // 分配内核栈
+  page = alloc_page_for_task(t);
+  t->kstack = page->paddr + PGSIZE;
 
-  //* 分配trapframe页
-  p = alloc_page_for_task(t);
-  ((struct trapframe*)p->paddr)->ksatp = kernel_satp;
-  svmmap(t->pagetable, TRAPFRAME, p->paddr, PGSIZE, PTE_R, t);
+  extern u64 kernel_satp;
+  page = alloc_page_for_task(t);
+  ((struct trapframe*)page->paddr)->ksatp = kernel_satp;
+  svmmap(t->pagetable, TRAPFRAME, page->paddr, PGSIZE, PTE_R, t);
 
-  //! 映射trampoline页 |  TRAMPOLINE页必须在内核和用户的页表中虚拟地址必须相同 | 该页所有task共享
+  // 映射trampoline页 |  TRAMPOLINE页必须在内核和用户的页表中虚拟地址必须相同 | 该页所有task共享
+  extern char trampoline[];
   svmmap(t->pagetable, TRAMPOLINE, (u64)trampoline, PGSIZE, PTE_X | PTE_R, NULL);
+}
+
+static void
+task_fs_init(struct task* t, struct task* p)
+{
+  if (p == NULL)
+    return;
+  iref(p->cwd);
+  t->cwd = p->cwd;
+  copy_files(t, p);
+}
+
+static void
+task_init(struct task* t, struct task* p)
+{
+  task_info_init(t, p);
+  task_mm_init(t, p);
+  task_fs_init(t, p);
 }
 
 struct task*
@@ -129,32 +149,37 @@ clean_source(struct task* t)
   for (int i = 0; i < t->files.i; ++i)
     fclose(t->files.f[i]);
   t->files.i = 0;
-  t->vmas.n = 0;
 
-  struct list_node *cur = t->pages.next, *tmp;
-  while (cur != &t->pages) {
-    tmp = cur->next;
-    free_page_for_task(container_of(cur, struct page, page_node));
-    cur = tmp;
+  struct list_node* node = t->mm_struct->page_head.next;
+  while (node != &t->mm_struct->page_head) {
+    struct page* p = container_of(node, struct page, page_node);
+    node = node->next;
+    free_page_for_task(p);
   }
+  node = t->mm_struct->vma_head.next;
+  while (node != &t->mm_struct->vma_head) {
+    struct vma* vma = container_of(node, struct vma, node);
+    node = node->next;
+    list_remove(&vma->node);
+    free_vma_slot(vma);
+  }
+  free_mm_struct_slot(t->mm_struct);
 
   free_tid(t->tid);
 }
 
-// 清空代码段和数据段
+// 清空代码段,数据段和堆区
 void
 reset_vma(struct task* t)
 {
-  int i = 0;
-  while (i < t->vmas.n) {
-    if (t->vmas.v[i].type == DATA || t->vmas.v[i].type == TEXT) {
-      vmunmap(t->pagetable, t->vmas.v[i].va, t->vmas.v[i].len);
-      free_page_for_task(page(t->vmas.v[i].pa));
-      for (int j = i; j < t->vmas.n - 1; j++)
-        t->vmas.v[j] = t->vmas.v[j + 1];
-      t->vmas.n--;
-    } else
-      ++i;
+  struct list_node* node = t->mm_struct->vma_head.next;
+  while (node != &t->mm_struct->vma_head) {
+    struct vma* vma = container_of(node, struct vma, node);
+    node = node->next;
+    if (vma->type != STACK) {
+      list_remove(&vma->node);
+      free_vma_slot(vma);
+    }
   }
 }
 
