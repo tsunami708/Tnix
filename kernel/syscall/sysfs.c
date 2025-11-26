@@ -71,9 +71,10 @@ create(const char* path, enum ftype type, dev_t dev)
 static void
 move_fdi(struct task* t)
 {
-  for (u32 i = t->files.i; i < NFILE; ++i) {
-    if (t->files.f[i] == NULL) {
-      t->files.i = i;
+  struct file** files = t->fs_struct->files;
+  for (u32 i = t->fs_struct->fdx; i < NFILE; ++i) {
+    if (files[i] == NULL) {
+      t->fs_struct->fdx = i;
       break;
     }
   }
@@ -86,7 +87,7 @@ sys_read(struct pt_regs* pt)
   void* udst = (void*)pt->a1;
   u32 len = pt->a2;
   struct task* t = mytask();
-  struct file* f = t->files.f[fd];
+  struct file* f = t->fs_struct->files[fd];
   if (f == NULL)
     return -1;
   if ((f->mode & O_RDONLY) == 0 && (f->mode & O_RDWR) == 0)
@@ -95,7 +96,7 @@ sys_read(struct pt_regs* pt)
   case NONE:
     return -1;
   case DEVICE:
-    return devsw[t->files.f[fd]->inode->di.dev].read(udst, len);
+    return devsw[f->inode->di.dev].read(udst, len);
   case INODE:
     return fread(f, udst, len, false);
   case PIPE:
@@ -111,7 +112,7 @@ sys_write(struct pt_regs* pt)
   const void* usrc = (void*)pt->a1;
   u32 len = pt->a2;
   struct task* t = mytask();
-  struct file* f = t->files.f[fd];
+  struct file* f = t->fs_struct->files[fd];
   if (f == NULL)
     return -1;
   if ((f->mode & O_WRONLY) == 0 && (f->mode & O_RDWR) == 0)
@@ -120,7 +121,7 @@ sys_write(struct pt_regs* pt)
   case NONE:
     return -1;
   case DEVICE:
-    return devsw[t->files.f[fd]->inode->di.dev].write(usrc, len);
+    return devsw[f->inode->di.dev].write(usrc, len);
   case INODE:
     return fwrite(f, usrc, len, false);
   case PIPE:
@@ -133,7 +134,7 @@ long
 sys_lseek(struct pt_regs* pt)
 {
   int fd = pt->a0, off = pt->a1;
-  struct file* f = mytask()->files.f[fd];
+  struct file* f = mytask()->fs_struct->files[fd];
   if (f == NULL || f->type != INODE)
     return -1;
   return fseek(f, off, SEEK_CUR);
@@ -187,8 +188,8 @@ sys_open(struct pt_regs* pt)
   f->type = in->di.type == CHAR ? DEVICE : INODE;
   f->mode = mode;
   f->off = mode & O_APPEND ? in->di.fsize : 0;
-  long r = t->files.i;
-  t->files.f[r] = f;
+  long r = t->fs_struct->fdx;
+  t->fs_struct->files[r] = f;
   move_fdi(t);
   return r;
 }
@@ -197,12 +198,13 @@ long
 sys_dup(struct pt_regs* pt)
 {
   struct task* t = mytask();
+  struct fs_struct* fs_struct = t->fs_struct;
   int fd = pt->a0;
-  if (t->files.f[fd] == NULL)
+  if (fs_struct->files[fd] == NULL)
     return -1;
-  long r = t->files.i;
-  fdup(t->files.f[fd]);
-  t->files.f[r] = t->files.f[fd];
+  long r = fs_struct->fdx;
+  fdup(fs_struct->files[fd]);
+  fs_struct->files[r] = fs_struct->files[fd];
   move_fdi(t);
   return r;
 }
@@ -211,12 +213,13 @@ long
 sys_close(struct pt_regs* pt)
 {
   struct task* t = mytask();
+  struct fs_struct* fs_struct = t->fs_struct;
   int fd = pt->a0;
-  if (t->files.f[fd] == NULL)
+  if (fs_struct->files[fd] == NULL)
     return -1;
-  fclose(t->files.f[fd]);
-  t->files.f[fd] = NULL;
-  t->files.i = min(fd, t->files.i);
+  fclose(fs_struct->files[fd]);
+  fs_struct->files[fd] = NULL;
+  fs_struct->fdx = min(fd, fs_struct->fdx);
   return 0;
 }
 
@@ -342,8 +345,9 @@ sys_chdir(struct pt_regs* pt)
   struct inode* in = dentry_find(path);
   if (in == NULL)
     return -1;
-  iput(mytask()->cwd);
-  mytask()->cwd = in;
+  struct task* t = mytask();
+  iput(t->fs_struct->cwd);
+  t->fs_struct->cwd = in;
   return 0;
 }
 
@@ -361,11 +365,12 @@ sys_pipe(struct pt_regs* pt)
   rf->mode = O_RDONLY;
   wf->mode = O_WRONLY;
 
-  t->files.f[t->files.i] = rf;
-  copy_to_user(fds, &t->files.i, sizeof(int));
+  struct fs_struct* fs_struct = t->fs_struct;
+  fs_struct->files[fs_struct->fdx] = rf;
+  copy_to_user(fds, &fs_struct->fdx, sizeof(int));
   move_fdi(t);
-  t->files.f[t->files.i] = wf;
-  copy_to_user(fds + 1, &t->files.i, sizeof(int));
+  fs_struct->files[fs_struct->fdx] = rf;
+  copy_to_user(fds + 1, &fs_struct->fdx, sizeof(int));
   move_fdi(t);
   return 0;
 }
@@ -374,7 +379,7 @@ long
 sys_ls(struct pt_regs*)
 {
   char name[DLENGTH + 1] = { 0 };
-  struct inode* cur = mytask()->cwd;
+  struct inode* cur = mytask()->fs_struct->cwd;
   int blockcnt = iblock_cnt(cur);
   for (int i = 0; i < blockcnt; ++i) {
     struct buf* b = data_block_get(cur, i);

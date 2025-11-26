@@ -8,6 +8,7 @@
 
 #define NVMA_SLOT       3
 #define NMM_STURCT_SLOT 5
+#define NFS_STRUCT_SLOT 3
 
 // 地址空间
 #define MAXVA      0x3FFFFFFFFFUL        // 最大合法虚拟地址

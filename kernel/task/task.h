@@ -22,6 +22,12 @@ struct trapframe {
   u64 ksatp;
 };
 
+struct fs_struct {
+  struct file* files[NFILE];
+  u32 fdx;
+  struct inode* cwd;
+};
+
 struct task {
   u64 entry; // 进程代码入口地址
   u64 ustack;
@@ -40,12 +46,7 @@ struct task {
   enum task_state state;
   struct context ctx;
 
-  struct {
-    struct file* f[NFILE];
-    u32 i;
-  } files;
-  struct inode* cwd;
-
+  struct fs_struct* fs_struct;
   struct mm_struct* mm_struct;
 
   char tname[16];

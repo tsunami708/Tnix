@@ -85,5 +85,5 @@ void
 fsinit(void)
 {
   read_superblock(ROOTDEV, &rfs);
-  mytask()->cwd = iget(&rfs, ROOTINUM);
+  mytask()->fs_struct->cwd = iget(&rfs, ROOTINUM);
 }

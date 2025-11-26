@@ -85,7 +85,7 @@ dentry_find(const char* path)
     cur = iget(&rfs, ROOTINUM);
     ++path;
   } else
-    cur = iget(mytask()->cwd->sb, mytask()->cwd->inum);
+    cur = iget(mytask()->fs_struct->cwd->sb, mytask()->fs_struct->cwd->inum);
 
   struct buf* b;
   struct superblock* sb;

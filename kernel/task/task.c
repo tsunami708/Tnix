@@ -41,11 +41,12 @@ alloc_tid(void)
 }
 
 static void
-copy_files(struct task* c, struct task* p)
+copy_fs(struct task* c, struct task* p)
 {
-  memcpy(&c->files, &p->files, sizeof(p->files));
+  iref(p->fs_struct->cwd);
+  memcpy(c->fs_struct, p->fs_struct, sizeof(struct fs_struct));
   for (u32 i = 0; i < NFILE; ++i) {
-    struct file* pf = c->files.f[i];
+    struct file* pf = c->fs_struct->files[i];
     if (pf) {
       struct file* f = falloc();
       f->type = pf->type;
@@ -55,7 +56,7 @@ copy_files(struct task* c, struct task* p)
         iref(f->inode);
       else if (f->type == PIPE)
         pipeget(f->pipe);
-      c->files.f[i] = f;
+      c->fs_struct->files[i] = f;
     }
   }
 }
@@ -108,11 +109,10 @@ task_mm_init(struct task* t, struct task* p)
 static void
 task_fs_init(struct task* t, struct task* p)
 {
+  t->fs_struct = alloc_fs_struct_slot();
   if (p == NULL)
     return;
-  iref(p->cwd);
-  t->cwd = p->cwd;
-  copy_files(t, p);
+  copy_fs(t, p);
 }
 
 static void
@@ -141,15 +141,9 @@ alloc_task(struct task* p)
   panic("alloc_task: task too much");
 }
 
-void
-clean_source(struct task* t)
+static void
+clean_mm_source(struct task* t)
 {
-  iput(t->cwd);
-
-  for (int i = 0; i < t->files.i; ++i)
-    fclose(t->files.f[i]);
-  t->files.i = 0;
-
   struct list_node* node = t->mm_struct->page_head.next;
   while (node != &t->mm_struct->page_head) {
     struct page* p = container_of(node, struct page, page_node);
@@ -164,7 +158,31 @@ clean_source(struct task* t)
     free_vma_slot(vma);
   }
   free_mm_struct_slot(t->mm_struct);
+}
+static void
+clean_fs_source(struct task* t)
+{
+  struct fs_struct* fs_struct = t->fs_struct;
+  struct file** files = fs_struct->files;
 
+  iput(fs_struct->cwd);
+  fs_struct->cwd = NULL;
+
+  for (int i = 0; i < NFILE; ++i)
+    if (files[i]) {
+      fclose(files[i]);
+      files[i] = NULL;
+    }
+  fs_struct->fdx = 0;
+
+  free_fs_struct_slot(fs_struct);
+  t->fs_struct = NULL;
+}
+void
+clean_source(struct task* t)
+{
+  clean_fs_source(t);
+  clean_mm_source(t);
   free_tid(t->tid);
 }
 

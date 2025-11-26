@@ -88,11 +88,12 @@ sys_exec(struct pt_regs* pt)
     }
     reset_vma(t);
     load_segment(t, f, &eh);
+    fclose(f);
     t->entry = eh.entry;
     t->ctx.ra = (u64)first_sched;
     t->ctx.sp = t->kstack;
-    t->state = READY;
     spin_get(&t->lock);
+    t->state = READY;
     context_switch(NULL, &mycpu()->ctx);
   }
   return -1;

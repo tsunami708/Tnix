@@ -61,10 +61,12 @@
 
 slot_define(vma_slot, NVMA_SLOT, struct vma);
 slot_define(mm_struct_slot, NMM_STURCT_SLOT, struct mm_struct);
+slot_define(fs_struct_slot, NFS_STRUCT_SLOT, struct fs_struct);
 
 void
 init_slot(void)
 {
   init_vma_slot();
   init_mm_struct_slot();
+  init_fs_struct_slot();
 }
