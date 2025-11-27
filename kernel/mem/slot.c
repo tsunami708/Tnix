@@ -3,6 +3,8 @@
 #include "util/spinlock.h"
 #include "util/printf.h"
 #include "task/task.h"
+#include "fs/file.h"
+#include "fs/inode.h"
 
 #define slot_define(name, num, type)                                                                                   \
   struct name {                                                                                                        \
@@ -62,6 +64,7 @@
 slot_define(vma_slot, NVMA_SLOT, struct vma);
 slot_define(mm_struct_slot, NMM_STURCT_SLOT, struct mm_struct);
 slot_define(fs_struct_slot, NFS_STRUCT_SLOT, struct fs_struct);
+slot_define(file_slot, NFILE_SLOT, struct file);
 
 void
 init_slot(void)
@@ -69,4 +72,5 @@ init_slot(void)
   init_vma_slot();
   init_mm_struct_slot();
   init_fs_struct_slot();
+  init_file_slot();
 }

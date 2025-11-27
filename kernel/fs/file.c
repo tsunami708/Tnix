@@ -1,4 +1,5 @@
 #include "mem/vm.h"
+#include "mem/slot.h"
 #include "fs/file.h"
 #include "fs/inode.h"
 #include "fs/dir.h"
@@ -8,28 +9,14 @@
 #include "util/printf.h"
 #include "util/string.h"
 
-#define MFILES 50
-static struct {
-  struct spinlock lock;
-  struct file files[MFILES];
-} fcache = { .lock.lname = "fcache" };
-
 struct file*
 falloc(void)
 {
-  spin_get(&fcache.lock);
-  for (int i = 0; i < MFILES; ++i) {
-    spin_get(&fcache.files[i].lock);
-    if (fcache.files[i].refc == 0) {
-      fcache.files[i].refc = 1;
-      fcache.files[i].off = 0;
-      spin_put(&fcache.files[i].lock);
-      spin_put(&fcache.lock);
-      return fcache.files + i;
-    }
-    spin_put(&fcache.files[i].lock);
-  }
-  panic("falloc: fcache exhausted");
+  struct file* f = alloc_file_slot();
+  f->off = 0;
+  f->refc = 1;
+  f->lock.lname = "file";
+  return f;
 }
 
 void
@@ -54,6 +41,9 @@ fclose(struct file* f)
       iput(f->inode);
     else if (f->type == PIPE && f->pipe)
       pipeclose(f->pipe);
+    spin_put(&f->lock);
+    free_file_slot(f);
+    return;
   }
   spin_put(&f->lock);
 }

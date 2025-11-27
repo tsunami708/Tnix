@@ -6,9 +6,12 @@
 #define MPGSIZE (PGSIZE << 9)  // 2MB
 #define GPGSIZE (PGSIZE << 18) // 1GB
 
-#define NVMA_SLOT       3
-#define NMM_STURCT_SLOT 5
-#define NFS_STRUCT_SLOT 3
+#define NSLOT_DEFAULT   3
+#define NVMA_SLOT       NSLOT_DEFAULT
+#define NMM_STURCT_SLOT NSLOT_DEFAULT
+#define NFS_STRUCT_SLOT NSLOT_DEFAULT
+#define NFILE_SLOT      NSLOT_DEFAULT
+#define NINODE_SLOT     NSLOT_DEFAULT
 
 // 地址空间
 #define MAXVA      0x3FFFFFFFFFUL        // 最大合法虚拟地址
