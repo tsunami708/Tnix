@@ -6,7 +6,7 @@ import os
 def find_macro_values(file_paths):
   config = {}
   
-  macro_pattern = re.compile(r'#define\s+(NFILE|NIOBUF|NINODE)\s+(\d+)')
+  macro_pattern = re.compile(r'#define\s+(NPROC|NIOBUF|NINODE)\s+(\d+)')
   
   for file_path in file_paths:
     if not os.path.exists(file_path):
@@ -25,7 +25,7 @@ def find_macro_values(file_paths):
       raise Exception(f"Error reading {file_path}: {e}")
   
   missing_macros = []
-  for macro in ['NFILE', 'NIOBUF', 'NINODE']:
+  for macro in ['NPROC', 'NIOBUF', 'NINODE']:
     if macro not in config:
       missing_macros.append(macro)
   
@@ -35,7 +35,15 @@ def find_macro_values(file_paths):
   return config
 
 def generate_gdbinit(config):
-  gdbinit_content = f'''define ls
+  gdbinit_content = f'''
+set confirm off
+set architecture riscv:rv64
+target remote 127.0.0.1:1234
+symbol-file kernel
+set disassemble-next-line auto
+set riscv use-compressed-breakpoints yes
+
+define ls
   layout src
 end
 
@@ -51,7 +59,7 @@ define sunlock
   set scheduler-locking off
 end
 
-define pb
+define pbuf
   set $bcache_ptr = (struct buf*)&bcache.bufs
   set $count = 0
   set $i = 0
@@ -65,21 +73,7 @@ define pb
   end
 end
 
-define pf
-  set $fcache_ptr = (struct file*)&fcache.files
-  set $count = 0
-  set $i = 0
-  while $i < {config['NFILE']}
-    set $file = &$fcache_ptr[$i]
-    if ($file->refc != 0)
-      printf "  file: %p, refc = %d\\n", $file, $file->refc
-      set $count = $count + 1
-    end
-    set $i = $i + 1
-  end
-end
-
-define pi
+define pinode
   set $icache_ptr = (struct inode*)&icache.inodes
   set $count = 0
   set $i = 0
@@ -93,12 +87,19 @@ define pi
   end
 end
 
-set confirm off
-set architecture riscv:rv64
-target remote 127.0.0.1:1234
-symbol-file kernel
-set disassemble-next-line auto
-set riscv use-compressed-breakpoints yes
+define ptask
+  set $task_ptr = (struct task*)task_queue
+  set $count = 0
+  set $i = 0
+  while $i < {config['NPROC']}
+    set $task = &$task_ptr[$i]
+    if ($task->state != 0)
+      printf "  task:%p %s, pid-%d tid-%d \\n", $task, $task->tname, $task->pid, $task->tid
+      set $count = $count + 1
+    end
+    set $i = $i + 1
+  end
+end
 '''
 
   with open('.gdbinit', 'w') as f:
