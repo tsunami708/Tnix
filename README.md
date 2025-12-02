@@ -40,6 +40,15 @@ docker pull tsunami849/tnix:latest
 docker run -it --name Tnix tsunami849/tnix:latest
 # docker start -ai Tnix 进入已经创建的容器
 ```
+3. **Arch Linux**(x86_64)
+```bash
+sudo pacman -Syu
+sudo pacman -S man clear git make cmake --noconfirm
+sudo pacman -S gcc g++ gdb --noconfirm
+sudo pacman -S qemu-system-riscv --noconfirm
+sudo pacman -S riscv64-linux-gnu-gcc --noconfirm
+```
+
 ## 项目构建
 ```bash
 cmake -B build
