@@ -16,25 +16,25 @@
 ## 开发与运行环境
 
 *开发工具*
-- git 2.51.1
-- cmake 3.31.6
-- make 4.4.1
+- git 
+- cmake 
+- make 
 - gcc-riscv64-linux-gnu
-- gcc(g++) 15.2.1
-- gdb 16.3
-- qemu 10.1.2
-- python 3.14.0
+- gcc(g++) 
+- gdb 
+- qemu 
+- python3
 
 1. **Fedora-43**(x86_64)
 
 ```bash
 sudo dnf update -y
-sudo dnf install man clear git make cmake -y
+sudo dnf install git make cmake -y
 sudo dnf install gcc g++ gdb -y
 sudo dnf install gcc-riscv64-linux-gnu -y
 sudo dnf install qemu-system-riscv64 -y
 ```
-2. **Docker**
+2. **Docker**(基于Fedora镜像)
 ```bash
 docker pull tsunami849/tnix:latest
 docker run -it --name Tnix tsunami849/tnix:latest
@@ -43,10 +43,19 @@ docker run -it --name Tnix tsunami849/tnix:latest
 3. **Arch Linux**(x86_64)
 ```bash
 sudo pacman -Syu
-sudo pacman -S man clear git make cmake --noconfirm
-sudo pacman -S gcc g++ gdb --noconfirm
+sudo pacman -S git make cmake --noconfirm
+sudo pacman -S gcc gdb --noconfirm
 sudo pacman -S qemu-system-riscv --noconfirm
 sudo pacman -S riscv64-linux-gnu-gcc --noconfirm
+```
+
+4. **Debian**(x86_64)
+```bash
+sudo apt update
+sudo apt install -y git make cmake python3
+sudo apt install -y gcc g++ gdb gdb-multiarch
+sudo apt install -y qemu-system-riscv64
+sudo apt install -y gcc-riscv64-linux-gnu
 ```
 
 ## 项目构建
@@ -60,7 +69,7 @@ make qemu
 
 #调试
 make gdb 
-gdb
+gdb #debian使用gdb-multiarch代替gdb
 ```
 
 ## 参考资料
